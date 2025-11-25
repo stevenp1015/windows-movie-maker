@@ -1,5 +1,5 @@
 import { type SceneNode, type VisualBible } from '../types';
-import { generateSceneImage, validateImage, generateSceneVideo } from './gemini';
+import { generateSceneImage, validateImage, generateSceneVideo, type ContextStack } from './gemini';
 import * as db from './db';
 
 export type PipelineStatus = 'idle' | 'running' | 'paused' | 'complete' | 'error';
@@ -95,9 +95,17 @@ export class ProductionPipeline {
     });
 
     try {
+      // Collect Character References for Video
+      const characterRefs: string[] = [];
+      for (const charId in this.visualBible.characterTurnarounds) {
+        const turnaround = this.visualBible.characterTurnarounds[charId];
+        if (turnaround.views.front.base64) characterRefs.push(turnaround.views.front.base64);
+      }
+
       const videoResult = await generateSceneVideo(
         imageResult.base64,
         scene.currentImagePrompt,
+        characterRefs, // Inject Character Refs
         5 // duration in seconds
       );
 
@@ -136,18 +144,29 @@ export class ProductionPipeline {
       this.onLog(`Generating image for scene ${sceneIndex + 1}, attempt ${attempt}/${maxRetries}`, 'info');
 
       try {
-        // Generate image
-        const imageResult = await generateSceneImage(currentPrompt, this.visualBible.targetOutputAspectRatio);
+        // Assemble the Context Stack (The "Oversaturation")
+        const contextStack = await this.assembleContextStack(sceneIndex);
+
+        // Generate image with Gemini 3 Vision (2K Resolution)
+        const imageResult = await generateSceneImage(
+          currentPrompt, 
+          contextStack,
+          '2K' // User requested 2K
+        );
         
         // Run validations
         const validationsPassed = await this.runValidations(sceneIndex, imageResult.base64, attempt);
 
         if (validationsPassed) {
+          // Save the successful image to IndexedDB (Blob)
+          const imageId = `img_${scene.id}_${Date.now()}`;
+          await db.saveAsset(imageId, imageResult.base64, 'image');
+
           return {
-            base64: imageResult.base64,
+            base64: imageResult.base64, // Return base64 for UI display
             seed: imageResult.seed,
             attempts: attempt,
-            status: 'done'
+            status: 'done' as const
           };
         }
 
@@ -166,6 +185,75 @@ export class ProductionPipeline {
     }
 
     return null; // All retries exhausted
+  }
+
+  // Helper: Assemble the Context Stack from IndexedDB
+  private async assembleContextStack(currentIndex: number): Promise<ContextStack> {
+    const stack: ContextStack = {
+      narrative: this.scenes[currentIndex].narrativeSegment,
+      visualBible: this.visualBible,
+      referenceImages: {
+        character: [],
+        setting: [],
+        previousFrame: null
+      }
+    };
+
+    // 1. Fetch Character Turnarounds (Front/Side)
+    // We iterate through all characters in the Bible and grab their turnarounds
+    for (const charId in this.visualBible.characterTurnarounds) {
+      const turnaround = this.visualBible.characterTurnarounds[charId];
+      if (turnaround.views.front.base64) stack.referenceImages.character.push(turnaround.views.front.base64);
+      if (turnaround.views.sideLeft.base64) stack.referenceImages.character.push(turnaround.views.sideLeft.base64);
+    }
+
+    // 2. Fetch Previous Frames (Continuity Anchors - Last 3 Images)
+    // We look back up to 3 scenes to find valid images
+    const lookbackCount = 3;
+    const previousImages: string[] = [];
+
+    for (let i = 1; i <= lookbackCount; i++) {
+      const targetIndex = currentIndex - i;
+      if (targetIndex >= 0) {
+        const prevScene = this.scenes[targetIndex];
+        if (prevScene.imageData?.base64) {
+          previousImages.push(prevScene.imageData.base64);
+        }
+      }
+    }
+
+    // Add them to the stack (most recent first)
+    if (previousImages.length > 0) {
+      // We store them in the 'previousFrame' field. 
+      // Note: The ContextStack interface currently defines previousFrame as 'string | null'.
+      // We need to update gemini.ts to accept an array, OR we just pass the most recent one here
+      // and update gemini.ts separately. 
+      // User asked to "include the previous 3 images".
+      // Let's assume we will update gemini.ts to handle an array or we hack it for now.
+      // Actually, let's just pass the most recent one as 'previousFrame' and the others as 'setting' refs 
+      // (as a hack) OR better, let's update the interface in gemini.ts.
+      // Since I can only edit one file right now, I will pass the most recent as previousFrame
+      // and the others as 'additionalContext' if I could, but I can't change the interface here.
+      
+      // WAIT. I can edit gemini.ts in the next step.
+      // For now, let's just put the MOST RECENT one in previousFrame, 
+      // and I will add a TODO to update gemini.ts to accept 'previousFrames: string[]'.
+      
+      // actually, the user said "include the previous 3 images".
+      // I will update the ContextStack interface in gemini.ts in the NEXT turn.
+      // For now, I will just grab the most recent one to satisfy the current type.
+      // BUT I will write the logic to grab 3.
+      
+      stack.referenceImages.previousFrame = previousImages[0]; // The immediate previous frame
+      
+      // I'll add the others to 'setting' for now so they get included in the prompt context
+      // This is a temporary bridge until I update the ContextStack interface.
+      if (previousImages.length > 1) {
+        stack.referenceImages.setting.push(...previousImages.slice(1));
+      }
+    }
+
+    return stack;
   }
 
   private async runValidations(sceneIndex: number, imageBase64: string, attempt: number): Promise<boolean> {

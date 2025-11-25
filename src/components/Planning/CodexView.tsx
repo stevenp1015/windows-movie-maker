@@ -54,8 +54,12 @@ const CodexView: React.FC<CodexViewProps> = ({ visualBible, onEdit }) => {
                   <h4 className="font-bold text-sm">{char.name}</h4>
                   {onEdit && (
                     <button
-                      onClick={() => onEdit('character', id)}
-                      className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent card expansion if we add that later
+                        console.log('Edit clicked for:', id);
+                        onEdit('character', id);
+                      }}
+                      className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-2 py-1 rounded hover:bg-black/5 transition-colors"
                     >
                       Edit
                     </button>
@@ -108,8 +112,12 @@ const CodexView: React.FC<CodexViewProps> = ({ visualBible, onEdit }) => {
                   <h4 className="font-bold text-sm">{setting.name}</h4>
                   {onEdit && (
                     <button
-                      onClick={() => onEdit('setting', id)}
-                      className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Edit clicked for setting:', id);
+                        onEdit('setting', id);
+                      }}
+                      className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-2 py-1 rounded hover:bg-black/5 transition-colors"
                     >
                       Edit
                     </button>

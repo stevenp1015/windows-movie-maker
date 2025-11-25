@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Film, Play, Pause, Settings } from 'lucide-react';
+import { Film, Play, Pause, Settings, LucideScissors } from 'lucide-react';
 import './index.css';
 import DirectorSanctum from './components/Planning/DirectorSanctum';
 import TimelineView from './components/Timeline/TimelineView';
@@ -94,58 +94,59 @@ function App() {
   const activeConversation = conversations.find(c => c.id === activeConversationId);
 
   if (isLoading) {
-    return <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">Loading Monstrosity...</div>;
+    return <div className="h-screen w-screen flex items-center justify-center">Loading Windows Movie Maker...</div>;
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-[#f2f4f5] to-[#D9DBE7]">
       {/* Sidebar */}
-      <aside className="w-80 overflow-y-auto flex-shrink-0 glass-panel z-20 flex flex-col border-r border-white/50">
-        <div className="p-6 border-b border-black/5">
+      <aside className="w-[5vw] flex-shrink-0 glass-panel z-20 flex flex-col border-r border-black/30 relative">
+        <div className="absolute inset-y-0 right-[-1px] w-[1px] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.3)_30%,rgba(255,255,255,0.6)_50%,rgba(255,255,255,0.3)_70%,rgba(255,255,255,0)_100%)]" />
+        
+        {/*<div className="absolute inset-y-0 right-[-1px] top-[45vh] h-[80px] w-[80px] rounded-full bg-[radial-gradient(100%_100%_at_50%_100%,rgba(255,255,255,0.3)_0%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0.0)_90%)]" /> */}
+        
+        {/* Fixed Header with the Film icon */}
+        <div className="flex items-center justify-center p-6 border-b border-black/40 flex-shrink-0">
           <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
             <Film className="w-5 h-5" />
-            MONSTROSITY
           </h1>
-          <p className="text-xs text-[var(--text-secondary)] mt-1">
-            Narrative → Video Pipeline
-          </p>
         </div>
 
-        {/* Phase Navigation */}
-        <div className="p-4 border-b border-black/5">
-          <div className="text-xs font-medium text-[var(--text-secondary)] mb-2">Navigation</div>
-          <div className="space-y-1">
+        {/* Phase Navigation - now vertically centered and taking up remaining space */}
+        <div className="flex flex-grow flex-col flex-1 items-center justify-center overflow-y-auto"> {/* Added overflow-y-auto here */}
+          <div className="p-4 space-y-1 w-full"> {/* Added w-full to make buttons take full width */}
             <button
               onClick={() => setCurrentPhase('planning')}
-              className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${
                 currentPhase === 'planning' 
-                  ? 'bg-black text-white font-bold' 
-                  : 'bg-white/30 hover:bg-white/50'
+                  ? 'bg-slate-800 text-white shadow-md' 
+                  : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
               }`}
             >
-              📋 Planning
+              <Settings className="w-5 h-5" />
             </button>
+            
             <button
               onClick={() => setCurrentPhase('decomposition')}
-              className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${
                 currentPhase === 'decomposition' 
-                  ? 'bg-black text-white font-bold' 
-                  : 'bg-white/30 hover:bg-white/50'
+                  ? 'bg-slate-800 text-white shadow-md' 
+                  : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
               }`}
               disabled={!visualBible.characters || Object.keys(visualBible.characters).length === 0}
             >
-              ✂️ Decomposition
+              <LucideScissors className="w-5 h-5" />
             </button>
             <button
               onClick={() => setCurrentPhase('production')}
-              className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${
                 currentPhase === 'production' 
-                  ? 'bg-black text-white font-bold' 
-                  : 'bg-white/30 hover:bg-white/50'
+                  ? 'bg-slate-800 text-white shadow-md' 
+                  : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
               }`}
               disabled={scenes.length === 0}
             >
-              🎬 Production
+              <Play className="w-5 h-5" />
             </button>
           </div>
           
@@ -162,7 +163,7 @@ function App() {
             </div>
           )}
         </div>
-
+      </aside>
         {/* Pipeline Controls (Production Phase) */}
         {currentPhase === 'production' && (
           <div className="p-4 border-b border-black/5 space-y-2">
@@ -243,7 +244,7 @@ function App() {
             ))}
           </div>
         </div>
-      </aside>
+
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">

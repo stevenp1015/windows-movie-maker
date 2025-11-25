@@ -8,7 +8,7 @@ interface MonstrosityDB extends DBSchema {
       id: string;
       name: string;
       visualBible: VisualBible;
-      scenes: SceneNode[];
+      scenes: SceneNode[]; // Scenes now store asset IDs, not base64
       conversations: Conversation[];
       lastUpdated: number;
     };
@@ -17,8 +17,10 @@ interface MonstrosityDB extends DBSchema {
     key: string;
     value: {
       id: string;
-      data: Blob | string; // Base64 or Blob
+      data: Blob; // Store as Blob for efficiency
       type: 'image' | 'video';
+      mimeType: string;
+      createdAt: number;
     };
   };
 }
@@ -54,9 +56,30 @@ export const getAllProjects = async () => {
   return db.getAll('projects');
 };
 
-export const saveAsset = async (id: string, data: Blob | string, type: 'image' | 'video') => {
+export const saveAsset = async (id: string, data: Blob | string, type: 'image' | 'video', mimeType: string = 'image/png') => {
   const db = await initDB();
-  return db.put('assets', { id, data, type });
+  
+  // Convert base64 string to Blob if necessary
+  let blobData: Blob;
+  if (typeof data === 'string') {
+    const byteString = atob(data.split(',')[1] || data);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    blobData = new Blob([ab], { type: mimeType });
+  } else {
+    blobData = data;
+  }
+
+  return db.put('assets', { 
+    id, 
+    data: blobData, 
+    type, 
+    mimeType,
+    createdAt: Date.now() 
+  });
 };
 
 export const getAsset = async (id: string) => {

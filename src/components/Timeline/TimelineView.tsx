@@ -19,21 +19,49 @@ const TimelineView: React.FC<TimelineViewProps> = ({
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Horizontal scroll with wheel
+  // Horizontal scroll with wheel - Steven's special no-vertical-bullshit edition
+  // Now with document-level interception to tell Chrome's navigation gesture to fuck right off
   useEffect(() => {
     const el = scrollContainerRef.current;
-    if (el) {
-      const onWheel = (e: WheelEvent) => {
-        if (e.deltaY === 0) return;
-        e.preventDefault();
-        el.scrollTo({
-          left: el.scrollLeft + e.deltaY,
-          behavior: 'smooth'
-        });
-      };
-      el.addEventListener('wheel', onWheel);
-      return () => el.removeEventListener('wheel', onWheel);
-    }
+    if (!el) return;
+
+    const THRESHOLD = 0.5;
+
+    // Document-level listener to intercept BEFORE Chrome's gesture detection
+    // This is the nuclear option that catches wheel events at the highest level
+    const documentWheelHandler = (e: WheelEvent) => {
+      // Check if the wheel event is happening over our timeline container
+      const target = e.target as Node;
+      if (el.contains(target)) {
+        // Got you, Chrome. This wheel event is OURS now.
+        // We're preventing default at the document level so Chrome's navigation
+        // gesture detector never even sees this event.
+        const horizontalDelta = e.deltaX;
+        if (Math.abs(horizontalDelta) > THRESHOLD) {
+          e.preventDefault();
+          el.scrollLeft += horizontalDelta;
+        }
+      }
+    };
+
+    // Container-level listener as backup (shouldn't be needed but belt-and-suspenders)
+    const containerWheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      const horizontalDelta = e.deltaX;
+      if (Math.abs(horizontalDelta) > THRESHOLD) {
+        el.scrollLeft += horizontalDelta;
+      }
+    };
+
+    // CRITICAL: passive: false on BOTH listeners so preventDefault actually works
+    // The document-level one is what really matters for killing Chrome's gestures
+    document.addEventListener('wheel', documentWheelHandler, { passive: false });
+    el.addEventListener('wheel', containerWheelHandler, { passive: false });
+
+    return () => {
+      document.removeEventListener('wheel', documentWheelHandler);
+      el.removeEventListener('wheel', containerWheelHandler);
+    };
   }, []);
 
   return (
@@ -53,6 +81,10 @@ const TimelineView: React.FC<TimelineViewProps> = ({
       <div 
         ref={scrollContainerRef} 
         className="flex-1 overflow-x-auto overflow-y-hidden flex items-center px-10 gap-8 relative"
+        style={{ 
+          overscrollBehaviorX: 'contain',
+          overscrollBehaviorY: 'none'
+        }}
       >
         {/* Connection Layer (SVG) - Placeholder for Bezier Curves */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-20">

@@ -49,7 +49,18 @@ export const VISUAL_BIBLE_FUNCTIONS: FunctionDeclaration[] = [
         timePeriod: { type: 'string', description: 'Historical or temporal context' },
         atmosphere: { type: 'string', description: 'Mood and atmosphere of the setting' },
         keyVisualElements: { type: 'array', items: { type: 'string' }, description: 'Important visual elements to include' },
-        props: { type: 'object', description: 'Important props/objects in this setting', additionalProperties: { type: 'string' } }
+        props: { 
+          type: 'array', 
+          description: 'List of important props/objects in this setting',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Name of the prop' },
+              description: { type: 'string', description: 'Visual description of the prop' }
+            },
+            required: ['name', 'description']
+          }
+        }
       },
       required: ['id', 'name', 'locationDescription', 'atmosphere', 'keyVisualElements']
     }
@@ -184,7 +195,10 @@ export const executeFunctionCall = (
           timePeriod: args.timePeriod || '',
           atmosphere: args.atmosphere || '',
           keyVisualElements: args.keyVisualElements || [],
-          propLibrary: args.props || {},
+          propLibrary: (args.props || []).reduce((acc: Record<string, string>, prop: { name: string; description: string }) => {
+            acc[prop.name] = prop.description;
+            return acc;
+          }, {}),
           visualReferences: args.visualReferences
         }
       };

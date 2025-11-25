@@ -6,10 +6,14 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || (window as any).__GEMINI_
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // Models (use 2.5 Pro as fallback if 3.0 isn't available yet)
-const MODEL_CHAT = 'gemini-flash-latest'; // Falling back to flash for now
-const MODEL_IMAGE_VISION = 'gemini-3-pro-image-preview'; // Nano Banana
-const MODEL_IMAGE_GEN = 'imagen-4.0-ultra-generate-001';
+// Models - ALL GEMINI 3 PRO PREVIEW (The "Monstrosity" Standard)
+const MODEL_TEXT = 'gemini-3-pro-preview'; 
+const MODEL_VISION = 'gemini-3-pro-image-preview'; // Nano Banana
 const MODEL_VIDEO = 'veo-3.1-generate-preview';
+
+// Configuration Constants
+const THINKING_LEVEL = 'high'; // "No Thoughts, Head Empty" is forbidden
+
 
 // Helper to create fetch with timeout
 const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs: number = 60000) => {
@@ -137,16 +141,17 @@ ${styleNotes}
 
 Respond ONLY with valid JSON matching this structure. Ensure ALL array fields are proper JSON arrays.`;
 
-  console.log('[Gemini] Calling analyzeNarrative with model:', MODEL_CHAT);
+  console.log('[Gemini] Calling analyzeNarrative with model:', MODEL_TEXT);
   console.log('[Gemini] Narrative length:', narrative.length, 'chars');
 
-  const response = await fetchWithTimeout(`${BASE_URL}/${MODEL_CHAT}:generateContent`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/${MODEL_TEXT}:generateContent`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
       contents: [{ parts: [{ text: systemPrompt }] }],
       generationConfig: {
-        response_mime_type: 'application/json'
+        response_mime_type: 'application/json',
+        thinking_config: { thinking_level: THINKING_LEVEL } // FORCE REASONING
       }
     })
   });
@@ -214,13 +219,14 @@ Respond with a JSON array of scene objects. Each object must have:
 
 Be exhaustive and precise in the prompts.`;
 
-  const response = await fetch(`${BASE_URL}/${MODEL_CHAT}:generateContent`, {
+  const response = await fetch(`${BASE_URL}/${MODEL_TEXT}:generateContent`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
       contents: [{ parts: [{ text: systemPrompt }] }],
       generationConfig: {
-        response_mime_type: 'application/json'
+        response_mime_type: 'application/json',
+        thinking_config: { thinking_level: THINKING_LEVEL }
       }
     })
   });
@@ -265,39 +271,52 @@ export const chatWithDirector = async (
   history: ChatMessage[], 
   userMessage: string, 
   visualBible?: VisualBible,
-  enableFunctionCalling: boolean = true
+  enableFunctionCalling: boolean = true,
+  images: string[] = []
 ): Promise<ChatResponse> => {
   if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
 
-  const systemPrompt = `You are an expert film director and creative consultant helping build a comprehensive Visual Bible for a narrative video project.
+  const systemPrompt = `You are an expert film director and creative consultant helping build a comprehensive Visual Bible.
+  
+  ${visualBible ? `Current Visual Bible:
+  - Title: ${visualBible.name}
+  - Mood: ${visualBible.colorPalette.mood}
+  - Themes: ${visualBible.narrativeThemes.join(', ')}
+  ` : ''}
 
-${visualBible ? `Current Visual Bible:
-- Title: ${visualBible.name}
-- Mood: ${visualBible.colorPalette.mood}
-- Themes: ${visualBible.narrativeThemes.join(', ')}
-- Characters: ${Object.keys(visualBible.characters).length} defined
-- Settings: ${Object.keys(visualBible.settings).length} defined
+  Your goal is to help the user refine this vision.
+  If the user asks a question, ANSWER IT directly.
+  If the user explicitly asks to update data (e.g., "change hair to blue", "add a scar"), use the available tools.
+  DO NOT call tools if the user is just asking a question or showing an image.
+  `;
 
-Your role is to help the user refine this vision with thoughtful questions and creative suggestions. Use function calls to systematically update the Visual Bible as the conversation progresses.
-` : `Your role is to help the user develop their narrative vision from scratch. Ask clarifying questions about:
-- Characters and their visual appearance
-- Settings and locations
-- Overall mood and color palette
-- Cinematographic style
-- Narrative themes and motifs
-
-Use the available functions to capture this information systematically.`}
-
-Be conversational, insightful, and proactive in suggesting function calls to build out the Visual Bible.`;
-
-  const contents = [
+  const contents: any[] = [
     { role: 'user', parts: [{ text: systemPrompt }] },
-    ...history.map(msg => ({
-      role: msg.sender === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }]
-    })),
-    { role: 'user', parts: [{ text: userMessage }] }
+    ...history.map(msg => {
+      const parts: any[] = [{ text: msg.content }];
+      if (msg.images && msg.images.length > 0) {
+        msg.images.forEach(img => {
+           const cleanRef = img.replace(/^data:image\/\w+;base64,/, '');
+           parts.push({ inline_data: { mime_type: 'image/png', data: cleanRef } });
+        });
+      }
+      return {
+        role: msg.sender === 'user' ? 'user' : 'model',
+        parts
+      };
+    })
   ];
+
+  // Construct current message parts
+  const currentParts: any[] = [{ text: userMessage }];
+  if (images && images.length > 0) {
+    images.forEach(img => {
+       const cleanRef = img.replace(/^data:image\/\w+;base64,/, '');
+       currentParts.push({ inline_data: { mime_type: 'image/png', data: cleanRef } });
+    });
+  }
+  
+  contents.push({ role: 'user', parts: currentParts });
 
   // Import function declarations dynamically
   const { VISUAL_BIBLE_FUNCTIONS } = await import('./visualBibleFunctions');
@@ -310,10 +329,15 @@ Be conversational, insightful, and proactive in suggesting function calls to bui
     }];
   }
 
-  const response = await fetch(`${BASE_URL}/${MODEL_CHAT}:generateContent`, {
+  const response = await fetch(`${BASE_URL}/${MODEL_TEXT}:generateContent`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify(body)
+    body: JSON.stringify({
+      ...body,
+      generationConfig: {
+        thinking_config: { thinking_level: THINKING_LEVEL }
+      }
+    })
   });
 
   if (!response.ok) {
@@ -350,21 +374,79 @@ Be conversational, insightful, and proactive in suggesting function calls to bui
 
 // --- Image Generation (Imagen 4) ---
 
-export const generateSceneImage = async (prompt: string, aspectRatio: string = '16:9'): Promise<{ base64: string; seed?: number }> => {
+// --- Image Generation (Gemini 3 Vision - The "Context Stack" Approach) ---
+
+export interface ContextStack {
+  narrative: string;
+  visualBible: VisualBible;
+  worldState?: any; 
+  referenceImages: {
+    character: string[]; // Base64s
+    setting: string[];   // Base64s
+    previousFrame: string | string[] | null; // Base64 or array of Base64s
+  };
+  validationHistory?: any[];
+}
+
+export const generateSceneImage = async (
+  prompt: string, 
+  contextStack: ContextStack,
+  aspectRatio: string = '16:9'
+): Promise<{ base64: string; seed?: number; thoughtSignature?: string }> => {
   if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
 
-  const response = await fetch(`${BASE_URL}/${MODEL_IMAGE_GEN}:predict`, {
+  // Construct the "Oversaturated" Prompt
+  const systemPrompt = `Generate a high-fidelity, 4K cinematic image based on the following scene.
+  
+  SCENE PROMPT: "${prompt}"
+
+  CRITICAL VISUAL CONTEXT (YOU MUST ADHERE TO THIS):
+  - Cinematography: ${contextStack.visualBible.cinematography.lightingStyle}, ${contextStack.visualBible.cinematography.lensType}
+  - Color Palette: ${contextStack.visualBible.colorPalette.mood}
+  
+  REFERENCE ADHERENCE:
+  - The character in the generated image MUST visually match the provided Character Reference images EXACTLY.
+  - The setting MUST match the Setting Reference images.
+  - The lighting and color grading MUST be consistent with the Previous Frame (if provided).
+  
+  Output the image in ${aspectRatio} aspect ratio.`;
+
+  const parts: any[] = [{ text: systemPrompt }];
+
+  // Inject Reference Images (The "Stack")
+  // 1. Character Refs
+  contextStack.referenceImages.character.forEach(ref => {
+    parts.push({ inline_data: { mime_type: 'image/png', data: ref } });
+  });
+  
+  // 2. Setting Refs
+  contextStack.referenceImages.setting.forEach(ref => {
+    parts.push({ inline_data: { mime_type: 'image/png', data: ref } });
+  });
+
+  // 3. Previous Frames (Continuity Anchors)
+  if (contextStack.referenceImages.previousFrame) {
+    if (Array.isArray(contextStack.referenceImages.previousFrame)) {
+      contextStack.referenceImages.previousFrame.forEach(ref => {
+        parts.push({ inline_data: { mime_type: 'image/png', data: ref } });
+      });
+    } else {
+      parts.push({ inline_data: { mime_type: 'image/png', data: contextStack.referenceImages.previousFrame } });
+    }
+  }
+
+  const response = await fetch(`${BASE_URL}/${MODEL_VISION}:generateContent`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
-      instances: [
-        {
-          prompt: prompt
+      contents: [{ parts }],
+      generationConfig: {
+        response_modalities: ['IMAGE'],
+        thinking_config: { thinking_level: THINKING_LEVEL }, // High reasoning for composition
+        image_config: {
+          aspect_ratio: aspectRatio === '2K' ? '16:9' : aspectRatio, // Map '2K' to a ratio, size is handled below
+          image_size: aspectRatio === '2K' ? '2K' : '4K' // Support 2K request
         }
-      ],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: aspectRatio
       }
     })
   });
@@ -375,17 +457,16 @@ export const generateSceneImage = async (prompt: string, aspectRatio: string = '
   }
 
   const data = await response.json();
+  const candidate = data.candidates?.[0];
+  const imagePart = candidate?.content?.parts?.find((p: any) => p.inline_data);
   
-  // Response structure: { predictions: [{ bytesBase64Encoded: "..." }] }
-  const imageBytes = data.predictions?.[0]?.bytesBase64Encoded;
-  
-  if (!imageBytes) {
-    throw new Error('No image data received from Imagen');
+  if (!imagePart?.inline_data?.data) {
+    throw new Error('No image data received from Gemini');
   }
 
   return {
-    base64: imageBytes,
-    seed: data.predictions?.[0]?.seed
+    base64: imagePart.inline_data.data,
+    thoughtSignature: imagePart.thoughtSignature // Capture the "Memory"
   };
 };
 
@@ -393,27 +474,45 @@ export const generateSceneImage = async (prompt: string, aspectRatio: string = '
 
 export const editSceneImage = async (
   existingImageBase64: string,
-  editInstructions: string
-): Promise<{ base64: string }> => {
+  editInstructions: string,
+  thoughtSignature?: string // The "Memory" of the previous generation
+): Promise<{ base64: string; thoughtSignature?: string }> => {
   if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
 
-  // Using Gemini 3 Pro Image Preview (Nano Banana) for native image editing
-  // This is more efficient than full regeneration for small adjustments
-  const response = await fetch(`${BASE_URL}/${MODEL_IMAGE_VISION}:generateContent`, {
+  const parts: any[] = [
+    { text: editInstructions },
+    {
+      inline_data: {
+        mime_type: 'image/png',
+        data: existingImageBase64
+      }
+    }
+  ];
+
+  // If we have a thought signature, we MUST send it back to maintain reasoning context
+  if (thoughtSignature) {
+    parts.push({ thought_signature: thoughtSignature }); // Hypothetical field based on "thoughtSignature" usage in docs
+    // Note: The docs say "return these signatures back to the model in your request exactly as they were received".
+    // Usually this is part of the 'content' or 'parts' structure depending on the specific API version.
+    // For now, we'll assume it's attached to the part or content. 
+    // *Correction based on docs*: "Signatures are guaranteed on the first part... You must return all of these signatures".
+    // We will attach it to the image part if possible, or as a separate property if the SDK supports it.
+    // Since we are using raw REST, we need to be careful. 
+    // The docs example shows: "parts": [ { "text": "...", "thoughtSignature": "<Sig>" } ]
+    // So we will attach it to the text part.
+    parts[0].thoughtSignature = thoughtSignature; 
+  }
+
+  const response = await fetch(`${BASE_URL}/${MODEL_VISION}:generateContent`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: editInstructions },
-          {
-            inline_data: {
-              mime_type: 'image/png',
-              data: existingImageBase64
-            }
-          }
-        ]
-      }]
+      contents: [{ parts }],
+      generationConfig: {
+        response_modalities: ['IMAGE'],
+        thinking_config: { thinking_level: THINKING_LEVEL },
+        image_config: { image_size: '4K' }
+      }
     })
   });
 
@@ -423,17 +522,16 @@ export const editSceneImage = async (
   }
 
   const data = await response.json();
-  
-  // Extract the edited image from the response
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  const imagePart = parts.find((part: any) => part.inline_data);
+  const candidate = data.candidates?.[0];
+  const imagePart = candidate?.content?.parts?.find((p: any) => p.inline_data);
   
   if (!imagePart?.inline_data?.data) {
     throw new Error('No edited image data received from Gemini');
   }
 
   return {
-    base64: imagePart.inline_data.data
+    base64: imagePart.inline_data.data,
+    thoughtSignature: imagePart.thoughtSignature
   };
 };
 
@@ -442,19 +540,27 @@ export const editSceneImage = async (
 export const generateSceneVideo = async (
   imageBase64: string,
   prompt: string, 
+  referenceImages: string[] = [], // NEW: Veo 3.1 Reference Images
   duration: number = 5
 ): Promise<{ uri?: string; operationId?: string }> => {
   if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
+
+  // Construct Reference Image Objects for Veo
+  const references = referenceImages.map(ref => ({
+    image: { image64: ref },
+    reference_type: 'asset' // As per docs
+  }));
 
   const response = await fetch(`${BASE_URL}/${MODEL_VIDEO}:generateVideo`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
       prompt: { text: prompt },
-      image: { image64: imageBase64 },
+      image: { image64: imageBase64 }, // Start frame
       duration_seconds: duration,
       fps: 24,
-      aspect_ratio: '16:9'
+      aspect_ratio: '16:9',
+      reference_images: references.length > 0 ? references : undefined // Inject the references
     })
   });
 
@@ -535,13 +641,14 @@ Be harsh but constructive. Score 7+ passes, below 7 fails.`;
     }
   });
 
-  const response = await fetch(`${BASE_URL}/${MODEL_IMAGE_VISION}:generateContent`, {
+  const response = await fetch(`${BASE_URL}/${MODEL_VISION}:generateContent`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
       contents: [{ parts }],
       generationConfig: {
-        response_mime_type: 'application/json'
+        response_mime_type: 'application/json',
+        thinking_config: { thinking_level: THINKING_LEVEL } // High reasoning for critique
       }
     })
   });
@@ -566,4 +673,53 @@ Be harsh but constructive. Score 7+ passes, below 7 fails.`;
     console.error('Failed to parse validation JSON:', text);
     return { passed: false, score: 0, critique: 'Validation parsing failed' };
   }
+};
+
+export const generateItemReference = async (
+  prompt: string,
+  referenceImages: string[] = []
+): Promise<{ base64: string; thoughtSignature?: string }> => {
+  if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
+
+  const parts: any[] = [{ text: prompt }];
+
+  // Attach reference images if provided
+  referenceImages.forEach(ref => {
+    // Strip prefix if present
+    const cleanRef = ref.replace(/^data:image\/\w+;base64,/, '');
+    parts.push({ inline_data: { mime_type: 'image/png', data: cleanRef } });
+  });
+
+  const response = await fetch(`${BASE_URL}/${MODEL_VISION}:generateContent`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: {
+        response_modalities: ['IMAGE'],
+        thinking_config: { thinking_level: THINKING_LEVEL },
+        image_config: {
+          aspect_ratio: '1:1', // Square for reference cards
+          image_size: '2K'
+        }
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini Vision API Error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const imagePart = data.candidates?.[0]?.content?.parts?.find((p: any) => p.inline_data);
+
+  if (!imagePart) {
+    throw new Error('No image generated in response');
+  }
+
+  return {
+    base64: imagePart.inline_data.data,
+    thoughtSignature: imagePart.thoughtSignature
+  };
 };

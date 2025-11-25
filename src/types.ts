@@ -112,6 +112,7 @@ export interface ChatMessage {
     timestamp: number;
     sender: 'user' | 'gemini';
     content: string;
+    images?: string[]; // Base64 strings
     functionCall?: { name: string, args: Record<string, any> };
     functionResponse?: { name: string, response: any };
 }

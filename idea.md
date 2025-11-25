@@ -3,8 +3,12 @@ pretty much i want it to be a story/narrative to video generation pipeline thats
 
 so, high level, this would be the workflow: 
 i paste in my long ass narrative /  novel / multiple chapters / whatever 
-its sent to gemini with a super fuckin thorough and explanatory prompt that describes the entire pipeline as well as the current step of the pipeline that it's on, so it has ideal context. for example:
+
+**MOST IMPORTANTLY**: its sent to gemini with a super fuckin thorough and explanatory prompt that describes the entire pipeline as well as **the current step of the pipeline that it's on, so it has ideal context**.
+
+for example:
 "you're the prompt generation model integrated into "STEP __" of the following multi-step pipeline:"
+
   STEP 1: user pastes story (any length, from a short story to a literal novel)
   STEP 2: full text is sent to gemini 
   STEP 3: gemini creates (**a fuck ton**) of prompts for an image generation model to generate **a fuck ton** of images, that depict the story in extremely granular (maybe configurable granularity actually) intervals
@@ -12,13 +16,14 @@ its sent to gemini with a super fuckin thorough and explanatory prompt that desc
     (the ux can be a sort of "timeline" thing or something like that, whatevers the most intuitive)
   step 5: once all the prompts are approved, they're each sent to the image generation model
     - there should be whatever time delay is needed to avoid hitting rate limits but still allow it to just generate automatically one by one
-      - although idk how this will really work in the sense of like continuity because the imagen 4 model is the model that generates the *best* quality images but then the nano banana model (gemini-2.5-flash-image-preview) is the newest model that excels the most in image editing / continuity / all of that shit. idk actually, look at the docs in the docs/ folder to decide which models to include where and how. i trust you , you fuckin galaxy brain. you can design something great. 
-      - ALSO consider the fact that the nano banana model (gemini-2.5-flash-image-preview) gemini can literally be prompted WITH text and images AS WELL AS gemini-2.5-flash , so they can literally be sent the images that were generated in order to manually review them and determine the fuckin quality / continuity / etc... essentially this can be an insanely complex chain of gemini api calls for image generation, editing, reviewing, revising, validating, etc...
-  step 6: once ALL of the images are generated, OR ACTUALLY MAYBE **AS** THEY ARE BEING GENERATED, they can be sent directly back TO a gemini model as a form of 'validation' step, so that gemini itself can validate that the images are ideal for the entire purpose of what this app is doing,  like continuity etc... and this 'validation' confirmation step thing can be done in a configurable interval of number of image generations. so like, an option to "validate quality and continuity every __ images" and also like a short term validation interval as well as medium and long term so like for example, every 4 image generations can be validated against each other, and every 12 images can be validated against each other, and every 24th image can be validated against each other.  these numbers can be configured. 
+      - this needs to be designed with continuity being the #1 priority, because the gemini-3-pro-image-preview model is the model that excels the most in image generation (1K, 2K, 4K) and editing / continuity / all of that shit.  look at the docs in the docs/ folder to decide which models to include where and how. i trust you , you fuckin galaxy brain. you can design something great. 
+      - **CRUCIALLY**, gemini-3-pro-image-preview can literally be prompted WITH text AND images which is the **secret sauce** of this entire pipeline, so EACH IMAGE GENERATION STEP should include the last few images that were generated in order to generate the next image
+      - It can then review them and determine the fuckin quality / continuity / etc in preset intervals throughout the entire process... essentially this must be an insanely complex chain of gemini api calls for image generation, editing, reviewing, revising, validating, etc...
+  step 6: **AS** THE IMAGES ARE BEING GENERATED, they can be sent directly back TO a gemini model as a form of 'validation' step, so that gemini itself can validate that the images are ideal for the entire purpose of what this app is doing,  like continuity etc... and this 'validation' confirmation step thing can be done in a configurable interval of number of image generations. so like, an option in the UX to "validate quality and continuity every __ images", like a short term validation interval as well as medium and long term so like for example, every 4th image generation can be validated against each other, 8th image generation can be validated against every 4th image generation, and every 12th image generation can be validated against every 8th image generation, and every 24th image generation can be validated against every 12th image generation.   and all in between. these numbers can be configured. 
   let me clarify...
   
   <example>
-  these can be like the order of api calls for step 5, and their purpose;
+  these can be like the order of api calls for step 5, and their purpose:
 
   1- [img 1]
   2- img 2
@@ -74,9 +79,8 @@ thoughts:
   - maybe even like an option to first do a brainstorming QnA with gemini before it goes thru the actual prompt generation process so it understands the users vision or requirements as thoroughly as possible
   - ability to specific required number of total images or like even a way to like ask how many images it thinks it will need to generate first or some shit idk, 
   - this should specifically use the best models (and highest quality parameters) that exist currently for each:
+    - image generation / editing / refinement: gemini-3-pro-image-preview
     - video generation: veo-3.1-generate-preview 
-    - image generation: imagen-4.0-ultra-generate-001
-    - image editing / refinement: gemini-3-pro-image-preview
 
   ok listen i've been typing this for way too fucking long and im pretty sure you understand what im trying to do here so im just gonna send this and hope that you get it and can use your galaxy brain to design this perfect fucking narrative to video generation app with configurable control over the process whether it be fully autonomous and managed by gemini models or whatever level of involvement the user will have throuhgout the process 
 

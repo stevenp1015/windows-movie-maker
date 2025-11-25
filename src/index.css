@@ -1,25 +1,27 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  /* Tailwind v4 theme configuration */
+  --font-sans: 'Roboto', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
 
 :root {
   /* Custom CSS variables */
   --bg-app: linear-gradient(145deg, #f8fafc, #f1f5f9);
-  --bg-panel: rgba(255, 255, 255, 0.7);
+  --bg-panel: rgba(255, 255, 255, 0.1);
   --bg-card: rgba(255, 255, 255, 0.9);
   --glass-surface: rgba(255, 255, 255, 0.6);
   --glass-border: 1px solid rgba(255, 255, 255, 0.8);
   --reflective-edge: linear-gradient(145deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 1) 100%);
   --shadow-subtle: 0 4px 20px rgba(0, 0, 0, 0.03);
   --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.06);
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  
+
   /* Text colors */
   --text-primary: #1a1a1a;
   --text-secondary: #666666;
   --text-muted: #999999;
-  
+
   /* Accent colors */
   --accent-primary: #000000;
   --accent-success: #00cc88;
@@ -28,19 +30,16 @@
   --accent-info: #00aaff;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
 
 body {
   font-family: var(--font-sans);
-  background-color: transparent;
-  color: var(--text-primary);
-  line-height: 1.5;
+
+
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+
+  /* Prevent Chrome's back/forward swipe navigation gestures */
+  overscroll-behavior-x: none;
 }
 
 /* Glass Panel - Custom component class */
@@ -48,7 +47,7 @@ body {
   background: var(--bg-panel);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+
   box-shadow: var(--shadow-subtle);
 }
 
