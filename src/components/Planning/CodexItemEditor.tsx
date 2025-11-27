@@ -20,13 +20,24 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  // mode state removed as it was unused
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]); // Base64s
+  const [isVisible, setIsVisible] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const item = itemType === 'character' 
-    ? visualBible.characters[itemId] 
+  useEffect(() => {
+    // Trigger animation after mount
+    requestAnimationFrame(() => setIsVisible(true));
+  }, []);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    // Wait for animation to finish before calling onClose
+    setTimeout(onClose, 300);
+  };
+
+  const item = itemType === 'character'
+    ? visualBible.characters[itemId]
     : visualBible.settings[itemId];
 
   const scrollToBottom = () => {
@@ -37,6 +48,30 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
     scrollToBottom();
   }, [chatHistory]);
 
+  // Helper to update chat history both locally and in the persisted Visual Bible
+  const updateChatHistory = (newHistory: ChatMessage[]) => {
+    setChatHistory(newHistory);
+
+    const updatedBible = { ...visualBible };
+    if (itemType === 'character') {
+      // Ensure chatHistory exists on character before assigning
+      if (!updatedBible.characters[itemId].chatHistory) {
+        // @ts-ignore - Adding dynamic property if not in type definition yet
+        updatedBible.characters[itemId].chatHistory = [];
+      }
+      // @ts-ignore
+      updatedBible.characters[itemId].chatHistory = newHistory;
+    } else {
+      if (!updatedBible.settings[itemId].chatHistory) {
+        // @ts-ignore
+        updatedBible.settings[itemId].chatHistory = [];
+      }
+      // @ts-ignore
+      updatedBible.settings[itemId].chatHistory = newHistory;
+    }
+    onUpdate(updatedBible);
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -44,8 +79,46 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64 = e.target?.result as string;
-      // Strip prefix if needed, but usually we keep it for display and strip for API
       setUploadedImages(prev => [...prev, base64]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'general' | 'front' | 'sideLeft' | 'sideRight' | 'back') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      const updatedBible = { ...visualBible };
+
+      if (itemType === 'character') {
+        if (target === 'general') {
+          const currentRefs = updatedBible.characters[itemId].appearance.visualReferences || [];
+          updatedBible.characters[itemId].appearance.visualReferences = [...currentRefs, base64];
+        } else {
+          // Turnaround upload
+          // Ensure turnaround record exists
+          if (!updatedBible.characterTurnarounds[itemId]) {
+            updatedBible.characterTurnarounds[itemId] = {
+              characterId: itemId,
+              views: { front: { base64: '' }, sideLeft: { base64: '' }, sideRight: { base64: '' }, back: { base64: '' } },
+              metadata: { resolution: '2K', createdAt: Date.now() },
+              status: 'idle'
+            };
+          }
+          // Update specific view
+          updatedBible.characterTurnarounds[itemId].views[target] = { base64, thoughtSignature: 'manual_upload' };
+          // updatedBible.characterTurnarounds[itemId].status = 'complete'; 
+        }
+      } else {
+        // Setting - only general supported
+        const currentRefs = updatedBible.settings[itemId].visualReferences || [];
+        updatedBible.settings[itemId].visualReferences = [...currentRefs, base64];
+      }
+
+      onUpdate(updatedBible);
     };
     reader.readAsDataURL(file);
   };
@@ -61,14 +134,14 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
       images: uploadedImages.length > 0 ? [...uploadedImages] : undefined
     };
 
-    setChatHistory(prev => [...prev, userMsg]);
+    const newHistory = [...chatHistory, userMsg];
+    updateChatHistory(newHistory);
+
     setInput('');
     setIsProcessing(true);
 
     try {
       if (targetMode === 'text') {
-        // Text Mode: Update JSON Data via Function Calling
-        // We inject the current item JSON as context
         const contextPrompt = `
           Current Item ID: "${itemId}"
           Current Item Type: "${itemType}"
@@ -78,62 +151,69 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
           Update this item using the available functions. 
           IMPORTANT: When calling 'addCharacter' or 'defineSetting', you MUST use the ID "${itemId}" to ensure you update the existing record instead of creating a new one.
         `;
-        
+
         const response = await chatWithDirector(
-          chatHistory, // Pass full history
+          newHistory,
           contextPrompt,
           visualBible,
-          true, // Enable function calling
-          uploadedImages // Pass current images
+          true,
+          uploadedImages
         );
 
         if (response.text) {
-          setChatHistory(prev => [...prev, {
+          const assistantMsg: ChatMessage = {
             id: Date.now().toString(),
             timestamp: Date.now(),
             sender: 'gemini',
-            content: response.text || '' // Ensure string
+            content: response.text || ''
+          };
+          updateChatHistory([...newHistory, assistantMsg]);
+        }
+
+        if (response.functionCalls) {
+          const { executeFunctionCall } = await import('../../services/visualBibleFunctions');
+
+          let currentBible = { ...visualBible };
+          for (const call of response.functionCalls) {
+            currentBible = executeFunctionCall(currentBible, call.name, call.args);
+          }
+
+          // Also update chat history in the NEW bible state
+          // Note: We use @ts-ignore here because we might not have updated the types.ts yet to include chatHistory on characters/settings
+          if (itemType === 'character') {
+            // @ts-ignore
+            currentBible.characters[itemId].chatHistory = [...newHistory, {
+              id: (Date.now() + 1).toString(),
+              timestamp: Date.now(),
+              sender: 'gemini',
+              content: `Updated ${itemType} details via function call.`
+            }];
+          } else {
+            // @ts-ignore
+            currentBible.settings[itemId].chatHistory = [...newHistory, {
+              id: (Date.now() + 1).toString(),
+              timestamp: Date.now(),
+              sender: 'gemini',
+              content: `Updated ${itemType} details via function call.`
+            }];
+          }
+
+          onUpdate(currentBible);
+
+          setChatHistory(prev => [...prev, {
+            id: (Date.now() + 1).toString(),
+            timestamp: Date.now(),
+            sender: 'gemini',
+            content: `Updated ${itemType} details via function call.`
           }]);
         }
 
-        // If functions were called, the visualBible is updated in the background
-        // But we need to reflect that here. 
-        // Note: chatWithDirector currently returns the text/calls, but doesn't execute them locally 
-        // unless we hook it up. 
-        // WAIT. The current chatWithDirector implementation in gemini.ts DOES NOT execute functions.
-        // It returns them. We need to execute them here or pass a callback.
-        // For this MVP, let's assume we handle the execution logic here or in a wrapper.
-        // Actually, let's look at how DirectorSanctum handles it. 
-        // It calls 'executeFunctionCall'. We should do the same.
-        
-        if (response.functionCalls) {
-           // Import dynamically to avoid circular deps if needed, or just import at top
-           const { executeFunctionCall } = await import('../../services/visualBibleFunctions');
-           
-           let currentBible = { ...visualBible };
-           for (const call of response.functionCalls) {
-             currentBible = executeFunctionCall(currentBible, call.name, call.args);
-           }
-           onUpdate(currentBible);
-           
-           setChatHistory(prev => [...prev, {
-             id: Date.now().toString(),
-             timestamp: Date.now(),
-             sender: 'gemini',
-             content: `Updated ${itemType} details.`
-           }]);
-        }
-
       } else {
-        // Vision Mode: Generate/Edit Reference Image
-        // We use the uploaded images as context + the chat history
-        // This uses gemini-3-pro-image-preview
-        
-        // Construct a prompt that includes the item description
-        const itemDesc = itemType === 'character' 
-          ? (item as any).description 
+        // Vision Mode
+        const itemDesc = itemType === 'character'
+          ? (item as any).description
           : (item as any).locationDescription;
-          
+
         const itemVisuals = itemType === 'character'
           ? (item as any).appearance
           : (item as any).keyVisualElements;
@@ -144,42 +224,20 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
           User Request: ${input}
         `;
 
-        // Call the actual Vision API
-        // Dynamically import to avoid circular dependency issues if any, though direct import is fine here
         const { generateItemReference } = await import('../../services/gemini');
-        
         const result = await generateItemReference(visionPrompt, uploadedImages);
-        
-        // We should save this image to the item's visualReferences?
-        // For now, just show it in the chat.
-        // Ideally, we'd have a way to "accept" it into the Bible.
-        
-        setChatHistory(prev => [...prev, {
-            id: Date.now().toString(),
-            timestamp: Date.now(),
-            sender: 'gemini',
-            content: "Here is a generated reference based on your request.",
-            // We need to extend ChatMessage to support images or just embed it in content?
-            // The ChatMessage type currently only has 'content' string.
-            // We'll embed it as a markdown image for now or handle it in the UI renderer.
-            // Let's assume the UI can render markdown images or we add a specific field.
-            // Hack: Append the base64 as a markdown image
-            // content: `Here is a generated reference:\n\n![Generated Reference](data:image/png;base64,${result.base64})`
-        } as ChatMessage]);
-        
-        // Also add a system message with the raw image for the UI to render nicely if it supports it
-        // Or better, update the chat renderer to look for image attachments.
-        // For this MVP, let's just append a special marker.
-        setChatHistory(prev => [...prev, {
-            id: (Date.now() + 1).toString(),
-            timestamp: Date.now(),
-            sender: 'gemini',
-            content: `[IMAGE_GENERATED::${result.base64}]` 
-        } as ChatMessage]);
+
+        const assistantMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          timestamp: Date.now(),
+          sender: 'gemini',
+          content: `[IMAGE_GENERATED::${result.base64}]`
+        };
+        updateChatHistory([...newHistory, assistantMsg]);
       }
     } catch (error) {
       console.error('Chat failed:', error);
-      setChatHistory(prev => [...prev, {
+      updateChatHistory([...newHistory, {
         id: Date.now().toString(),
         timestamp: Date.now(),
         sender: 'gemini',
@@ -187,16 +245,23 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
       } as ChatMessage]);
     } finally {
       setIsProcessing(false);
-      setUploadedImages([]); // Clear uploads after send
+      setUploadedImages([]);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8 backdrop-blur-sm">
-      <div className="bg-[#0a0a0a] w-full max-w-6xl h-[85vh] rounded-2xl border border-white/10 flex overflow-hidden shadow-2xl">
-        
-        {/* Left: Item Details (Live JSON View) */}
-        <div className="w-1/3 border-r border-white/10 p-6 overflow-y-auto bg-black/20">
+    <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
+      {/* Backdrop - clickable to close */}
+      <div
+        className={`absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+        onClick={handleClose}
+      />
+
+      {/* Slide-over Panel */}
+      <div className={`relative w-full max-w-4xl h-full bg-[#0a0a0a] border-l border-white/10 shadow-2xl flex pointer-events-auto transform transition-transform duration-300 ease-out ${isVisible ? 'translate-x-0' : 'translate-x-full'}`}>
+
+        {/* Left: Item Details (Live JSON View) - Now narrower */}
+        <div className="w-[350px] border-r border-white/10 p-6 overflow-y-auto bg-black/20 flex-shrink-0 custom-scrollbar">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               {itemType === 'character' ? <span className="text-purple-400">Character</span> : <span className="text-blue-400">Setting</span>}
@@ -215,7 +280,7 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
 
             <div>
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Visual Attributes</label>
-              <div className="space-y-2">
+              <div className="space-y-2 mb-6">
                 {Object.entries(itemType === 'character' ? (item as any).appearance : (item as any)).map(([key, value]) => {
                   if (typeof value === 'string' && value) {
                     return (
@@ -228,6 +293,50 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
                   return null;
                 })}
               </div>
+
+              {/* Visual References */}
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Visual References</label>
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                {((itemType === 'character' ? (item as any).appearance.visualReferences : (item as any).visualReferences) || []).map((ref: string, i: number) => (
+                  <div key={i} className="aspect-square rounded bg-black/50 overflow-hidden border border-white/10">
+                    <img src={ref} alt="Ref" className="w-full h-full object-cover" />
+                  </div>
+                ))}
+                <label className="aspect-square rounded bg-white/5 hover:bg-white/10 border border-white/10 border-dashed flex items-center justify-center cursor-pointer transition-colors">
+                  <Upload className="w-4 h-4 text-gray-400" />
+                  <input type="file" className="hidden" accept="image/*" onChange={(e) => handleReferenceUpload(e, 'general')} />
+                </label>
+              </div>
+
+              {/* Turnaround Views (Character Only) */}
+              {itemType === 'character' && (
+                <>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Turnaround Views</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['front', 'sideLeft', 'sideRight', 'back'].map((view) => {
+                      const turnaround = visualBible.characterTurnarounds[itemId];
+                      const viewData = turnaround?.views?.[view as keyof typeof turnaround.views];
+                      const hasImage = viewData?.base64;
+
+                      return (
+                        <div key={view} className="aspect-3/4 rounded bg-black/50 overflow-hidden border border-white/10 relative group">
+                          {hasImage ? (
+                            <img src={viewData.base64} alt={view} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
+                              <span className="text-[10px] uppercase">{view.replace('side', 'side ')}</span>
+                            </div>
+                          )}
+                          <label className={`absolute inset-0 bg-black/50 ${hasImage ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 hover:opacity-100'} flex items-center justify-center cursor-pointer transition-opacity`}>
+                            <Upload className="w-4 h-4 text-white" />
+                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleReferenceUpload(e, view as any)} />
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -252,7 +361,7 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
           </div>
 
           {/* Chat Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
             {chatHistory.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-gray-600 space-y-4">
                 <MessageSquare className="w-12 h-12 opacity-20" />
@@ -269,16 +378,16 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
                     <div className="max-w-[80%] p-2 rounded-2xl bg-white/10 rounded-tl-sm overflow-hidden">
                       <img src={`data:image/png;base64,${imageBase64}`} alt="Generated" className="w-full h-auto rounded-lg" />
                       <div className="mt-2 flex justify-end">
-                         <button 
-                           className="text-xs bg-blue-600 px-2 py-1 rounded text-white hover:bg-blue-500"
-                           onClick={() => {
-                             // Logic to save this as the official reference
-                             // For now just log
-                             console.log('Save as reference clicked');
-                           }}
-                         >
-                           Save to Bible
-                         </button>
+                        <button
+                          className="text-xs bg-blue-600 px-2 py-1 rounded text-white hover:bg-blue-500"
+                          onClick={() => {
+                            // Logic to save this as the official reference
+                            // For now just log
+                            console.log('Save as reference clicked');
+                          }}
+                        >
+                          Save to Bible
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -287,11 +396,10 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
 
               return (
                 <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] p-4 rounded-2xl ${
-                    msg.sender === 'user' 
-                      ? 'bg-blue-600 text-white rounded-tr-sm' 
-                      : 'bg-white/10 text-gray-200 rounded-tl-sm'
-                  }`}>
+                  <div className={`max-w-[80%] p-4 rounded-2xl ${msg.sender === 'user'
+                    ? 'bg-blue-600 text-white rounded-tr-sm'
+                    : 'bg-white/10 text-gray-200 rounded-tl-sm'
+                    }`}>
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   </div>
                 </div>
@@ -307,7 +415,7 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
                 {uploadedImages.map((img, i) => (
                   <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/20 group">
                     <img src={img} alt="Upload" className="w-full h-full object-cover" />
-                    <button 
+                    <button
                       onClick={() => setUploadedImages(prev => prev.filter((_, idx) => idx !== i))}
                       className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
                     >
@@ -317,7 +425,7 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
                 ))}
               </div>
             )}
-            
+
             <div className="flex gap-4">
               <div className="relative">
                 <input
@@ -328,7 +436,7 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
                   multiple
                   onChange={handleImageUpload}
                 />
-                <label 
+                <label
                   htmlFor="image-upload"
                   className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-colors"
                 >
@@ -356,7 +464,7 @@ const CodexItemEditor: React.FC<CodexItemEditorProps> = ({
                   <Send className="w-4 h-4" />
                   <span>Send</span>
                 </button>
-                
+
                 <button
                   onClick={() => handleSend('vision')}
                   disabled={isProcessing || (!input && uploadedImages.length === 0)}

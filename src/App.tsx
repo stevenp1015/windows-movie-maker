@@ -5,10 +5,11 @@ import DirectorSanctum from './components/Planning/DirectorSanctum';
 import TimelineView from './components/Timeline/TimelineView';
 import { useMonstrosityEngine } from './hooks/useMonstrosityEngine';
 import { chatWithDirector } from './services/gemini';
+import BackgroundEffect from './background-effect';
 
 function App() {
   const [activeView, setActiveView] = useState<'planning' | 'production'>('planning');
-  
+
   const {
     visualBible,
     scenes,
@@ -57,7 +58,7 @@ function App() {
       sender: 'user' as const,
       content: text
     };
-    
+
     addMessage(activeConversationId, userMsg);
 
     try {
@@ -98,13 +99,14 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-[#f2f4f5] to-[#D9DBE7]">
+    <div className="flex h-screen w-screen overflow-hidden relative">
+      <BackgroundEffect />
       {/* Sidebar */}
       <aside className="w-[5vw] flex-shrink-0 glass-panel z-20 flex flex-col border-r border-black/30 relative">
         <div className="absolute inset-y-0 right-[-1px] w-[1px] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.3)_30%,rgba(255,255,255,0.6)_50%,rgba(255,255,255,0.3)_70%,rgba(255,255,255,0)_100%)]" />
-        
+
         {/*<div className="absolute inset-y-0 right-[-1px] top-[45vh] h-[80px] w-[80px] rounded-full bg-[radial-gradient(100%_100%_at_50%_100%,rgba(255,255,255,0.3)_0%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0.0)_90%)]" /> */}
-        
+
         {/* Fixed Header with the Film icon */}
         <div className="flex items-center justify-center p-6 border-b border-black/40 flex-shrink-0">
           <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
@@ -117,39 +119,36 @@ function App() {
           <div className="p-4 space-y-1 w-full"> {/* Added w-full to make buttons take full width */}
             <button
               onClick={() => setCurrentPhase('planning')}
-              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${
-                currentPhase === 'planning' 
-                  ? 'bg-slate-800 text-white shadow-md' 
-                  : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-              }`}
+              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${currentPhase === 'planning'
+                ? 'bg-slate-800 text-white shadow-md'
+                : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+                }`}
             >
               <Settings className="w-5 h-5" />
             </button>
-            
+
             <button
               onClick={() => setCurrentPhase('decomposition')}
-              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${
-                currentPhase === 'decomposition' 
-                  ? 'bg-slate-800 text-white shadow-md' 
-                  : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-              }`}
+              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${currentPhase === 'decomposition'
+                ? 'bg-slate-800 text-white shadow-md'
+                : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+                }`}
               disabled={!visualBible.characters || Object.keys(visualBible.characters).length === 0}
             >
               <LucideScissors className="w-5 h-5" />
             </button>
             <button
               onClick={() => setCurrentPhase('production')}
-              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${
-                currentPhase === 'production' 
-                  ? 'bg-slate-800 text-white shadow-md' 
-                  : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-              }`}
+              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${currentPhase === 'production'
+                ? 'bg-slate-800 text-white shadow-md'
+                : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+                }`}
               disabled={scenes.length === 0}
             >
               <Play className="w-5 h-5" />
             </button>
           </div>
-          
+
           {currentPhase === 'production' && (
             <div className="mt-3 p-2 bg-white/20 rounded">
               <div className="text-xs text-[var(--text-secondary)] mb-1">
@@ -164,86 +163,86 @@ function App() {
           )}
         </div>
       </aside>
-        {/* Pipeline Controls (Production Phase) */}
-        {currentPhase === 'production' && (
-          <div className="p-4 border-b border-black/5 space-y-2">
-            {pipelineStatus === 'idle' && (
-              <button
-                onClick={startPipeline}
-                disabled={scenes.length === 0}
-                className="w-full bg-black text-white px-4 py-2 rounded font-medium flex items-center justify-center gap-2 hover:bg-black/80 disabled:opacity-50"
-              >
-                <Play className="w-4 h-4" />
-                Start Production
-              </button>
-            )}
-            
-            {pipelineStatus === 'running' && (
-              <button
-                onClick={pausePipeline}
-                className="w-full bg-red-600 text-white px-4 py-2 rounded font-medium flex items-center justify-center gap-2 hover:bg-red-700"
-              >
-                <Pause className="w-4 h-4" />
-                Pause Pipeline
-              </button>
-            )}
-          </div>
-        )}
+      {/* Pipeline Controls (Production Phase) */}
+      {currentPhase === 'production' && (
+        <div className="p-4 border-b border-black/5 space-y-2">
+          {pipelineStatus === 'idle' && (
+            <button
+              onClick={startPipeline}
+              disabled={scenes.length === 0}
+              className="w-full bg-black text-white px-4 py-2 rounded font-medium flex items-center justify-center gap-2 hover:bg-black/80 disabled:opacity-50"
+            >
+              <Play className="w-4 h-4" />
+              Start Production
+            </button>
+          )}
 
-        {/* Phase-specific Sidebar Content */}
-        {(currentPhase === 'planning' || currentPhase === 'decomposition') && (
-          <DirectorSanctum
-            visualBible={visualBible}
-            messages={activeConversation?.messages || []}
-            onGenerateVisualBible={handleGenerateVisualBible}
-            onGenerateScenes={handleGenerateScenes}
-            onSendMessage={handleSendMessage}
-            onUpdateBible={updateVisualBible}
-            phase={currentPhase}
-          />
-        )}
+          {pipelineStatus === 'running' && (
+            <button
+              onClick={pausePipeline}
+              className="w-full bg-red-600 text-white px-4 py-2 rounded font-medium flex items-center justify-center gap-2 hover:bg-red-700"
+            >
+              <Pause className="w-4 h-4" />
+              Pause Pipeline
+            </button>
+          )}
+        </div>
+      )}
 
-        {currentPhase === 'production' && (
-          <div className="p-4">
-            <div className="glass-panel p-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
-                <Settings className="w-3 h-3" />
-                Configuration
-              </h3>
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="text-[var(--text-secondary)]">Scenes:</span> {scenes.length}
-                </div>
-                <div>
-                  <span className="text-[var(--text-secondary)]">Granularity:</span> {visualBible.granularityLevel}
-                </div>
-                <div>
-                  <span className="text-[var(--text-secondary)]">Max Retries:</span> {visualBible.maxImageRetries}
-                </div>
+      {/* Phase-specific Sidebar Content */}
+      {(currentPhase === 'planning' || currentPhase === 'decomposition') && (
+        <DirectorSanctum
+          visualBible={visualBible}
+          messages={activeConversation?.messages || []}
+          onGenerateVisualBible={handleGenerateVisualBible}
+          onGenerateScenes={handleGenerateScenes}
+          onSendMessage={handleSendMessage}
+          onUpdateBible={updateVisualBible}
+          phase={currentPhase}
+        />
+      )}
+
+      {currentPhase === 'production' && (
+        <div className="p-4">
+          <div className="glass-panel p-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
+              <Settings className="w-3 h-3" />
+              Configuration
+            </h3>
+            <div className="space-y-2 text-xs">
+              <div>
+                <span className="text-[var(--text-secondary)]">Scenes:</span> {scenes.length}
+              </div>
+              <div>
+                <span className="text-[var(--text-secondary)]">Granularity:</span> {visualBible.granularityLevel}
+              </div>
+              <div>
+                <span className="text-[var(--text-secondary)]">Max Retries:</span> {visualBible.maxImageRetries}
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* System Logs */}
-        <div className="flex-1 overflow-hidden flex flex-col p-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider mb-2">System Logs</h3>
-          <div className="flex-1 overflow-y-auto space-y-1 text-xs font-mono">
-            {systemLogs.slice(-20).map((log, i) => (
-              <div
-                key={i}
-                className={`
+      {/* System Logs */}
+      <div className="flex-1 overflow-hidden flex flex-col p-4">
+        <h3 className="text-xs font-bold uppercase tracking-wider mb-2">System Logs</h3>
+        <div className="flex-1 overflow-y-auto space-y-1 text-xs font-mono">
+          {systemLogs.slice(-20).map((log, i) => (
+            <div
+              key={i}
+              className={`
                   ${log.type === 'error' ? 'text-red-600' : ''}
                   ${log.type === 'success' ? 'text-green-600' : ''}
                   ${log.type === 'warning' ? 'text-orange-600' : ''}
                   ${log.type === 'info' ? 'text-[var(--text-secondary)]' : ''}
                 `}
-              >
-                [{new Date(log.timestamp).toLocaleTimeString()}] {log.message}
-              </div>
-            ))}
-          </div>
+            >
+              [{new Date(log.timestamp).toLocaleTimeString()}] {log.message}
+            </div>
+          ))}
         </div>
+      </div>
 
 
       {/* Main Content */}

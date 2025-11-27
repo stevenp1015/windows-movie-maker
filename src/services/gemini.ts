@@ -1,36 +1,40 @@
-import { type VisualBible, type SceneNode, type ChatMessage } from '../types';
+import { type VisualBible, type SceneNode, type ChatMessage } from "../types";
 
 // Read from .env.local (Vite auto-loads as import.meta.env.VITE_*)
 // But user has it as GEMINI_API_KEY, so we need a workaround
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || (window as any).__GEMINI_API_KEY__;
-const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+const API_KEY =
+  import.meta.env.VITE_GEMINI_API_KEY || (window as any).__GEMINI_API_KEY__;
+const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 // Models (use 2.5 Pro as fallback if 3.0 isn't available yet)
 // Models - ALL GEMINI 3 PRO PREVIEW (The "Monstrosity" Standard)
-const MODEL_TEXT = 'gemini-3-pro-preview'; 
-const MODEL_VISION = 'gemini-3-pro-image-preview'; // Nano Banana
-const MODEL_VIDEO = 'veo-3.1-generate-preview';
+const MODEL_TEXT = "gemini-3-pro-preview";
+const MODEL_VISION = "gemini-3-pro-image-preview"; // Nano Banana
+const MODEL_VIDEO = "veo-3.1-generate-preview";
 
 // Configuration Constants
-const THINKING_LEVEL = 'high'; // "No Thoughts, Head Empty" is forbidden
-
+const THINKING_LEVEL = "high"; // "No Thoughts, Head Empty" is forbidden
 
 // Helper to create fetch with timeout
-const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs: number = 60000) => {
+const fetchWithTimeout = async (
+  url: string,
+  options: RequestInit,
+  timeoutMs: number = 60000
+) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  
+
   try {
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal
+      signal: controller.signal,
     });
     clearTimeout(timeout);
     return response;
   } catch (error: any) {
     clearTimeout(timeout);
-    if (error.name === 'AbortError') {
-      throw new Error(`Request timed out after ${timeoutMs/1000}s`);
+    if (error.name === "AbortError") {
+      throw new Error(`Request timed out after ${timeoutMs / 1000}s`);
     }
     throw error;
   }
@@ -38,8 +42,8 @@ const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs: nu
 
 // Helper for headers
 const getHeaders = () => ({
-  'Content-Type': 'application/json',
-  'x-goog-api-key': API_KEY || '',
+  "Content-Type": "application/json",
+  "x-goog-api-key": API_KEY || "",
 });
 
 // --- Core Function: Analyze Narrative & Generate Visual Bible ---
@@ -48,7 +52,8 @@ export const analyzeNarrative = async (
   narrative: string,
   styleNotes: string
 ): Promise<Partial<VisualBible>> => {
-  if (!API_KEY) throw new Error('Missing GEMINI_API_KEY - check your .env.local file');
+  if (!API_KEY)
+    throw new Error("Missing GEMINI_API_KEY - check your .env.local file");
 
   const systemPrompt = `You are an expert film director and visual storyteller. Analyze the following narrative and extract a comprehensive Visual Bible for video generation.
 
@@ -141,37 +146,40 @@ ${styleNotes}
 
 Respond ONLY with valid JSON matching this structure. Ensure ALL array fields are proper JSON arrays.`;
 
-  console.log('[Gemini] Calling analyzeNarrative with model:', MODEL_TEXT);
-  console.log('[Gemini] Narrative length:', narrative.length, 'chars');
+  console.log("[Gemini] Calling analyzeNarrative with model:", MODEL_TEXT);
+  console.log("[Gemini] Narrative length:", narrative.length, "chars");
 
-  const response = await fetchWithTimeout(`${BASE_URL}/${MODEL_TEXT}:generateContent`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: systemPrompt }] }],
-      generationConfig: {
-        response_mime_type: 'application/json',
-        thinking_config: { thinking_level: THINKING_LEVEL } // FORCE REASONING
-      }
-    })
-  });
+  const response = await fetchWithTimeout(
+    `${BASE_URL}/${MODEL_TEXT}:generateContent`,
+    {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: systemPrompt }] }],
+        generationConfig: {
+          response_mime_type: "application/json",
+          thinking_config: { thinking_level: THINKING_LEVEL }, // FORCE REASONING
+        },
+      }),
+    }
+  );
 
   if (!response.ok) {
     const err = await response.json();
-    console.error('[Gemini] API Error:', err);
-    throw new Error(err.error?.message || 'Visual Bible generation failed');
+    console.error("[Gemini] API Error:", err);
+    throw new Error(err.error?.message || "Visual Bible generation failed");
   }
 
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  
-  if (!text) throw new Error('No response from Gemini');
-  
+
+  if (!text) throw new Error("No response from Gemini");
+
   try {
     return JSON.parse(text);
   } catch (e) {
-    console.error('Failed to parse Visual Bible JSON:', text);
-    throw new Error('Invalid JSON response from Gemini');
+    console.error("Failed to parse Visual Bible JSON:", text);
+    throw new Error("Invalid JSON response from Gemini");
   }
 };
 
@@ -180,13 +188,16 @@ Respond ONLY with valid JSON matching this structure. Ensure ALL array fields ar
 export const decomposeIntoScenes = async (
   narrative: string,
   visualBible: VisualBible
-): Promise<Omit<SceneNode, 'id'>[]> => {
-  if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
+): Promise<Omit<SceneNode, "id">[]> => {
+  if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
   const granularityInstructions = {
-    'Detailed Paragraph': 'Break the narrative at each significant paragraph or 2-3 sentence cluster. Each scene should be a distinct moment.',
-    'Sentence by Sentence': 'Create a scene for almost every sentence. Maximum granularity.',
-    'Key Beats': 'Only break at major plot beats, emotional shifts, or scene changes. Fewer, more comprehensive scenes.'
+    "Detailed Paragraph":
+      "Break the narrative at each significant paragraph or 2-3 sentence cluster. Each scene should be a distinct moment.",
+    "Sentence by Sentence":
+      "Create a scene for almost every sentence. Maximum granularity.",
+    "Key Beats":
+      "Only break at major plot beats, emotional shifts, or scene changes. Fewer, more comprehensive scenes.",
   };
 
   const systemPrompt = `You are a film director breaking down a narrative into individual shots for image generation.
@@ -200,7 +211,9 @@ For each scene, provide:
    - The narrative action/moment
    - Relevant character details from Visual Bible
    - Setting details and atmosphere
-   - Cinematography style (${visualBible.cinematography.lensType}, ${visualBible.cinematography.lightingStyle})
+   - Cinematography style (${visualBible.cinematography.lensType}, ${
+    visualBible.cinematography.lightingStyle
+  })
    - Color palette mood (${visualBible.colorPalette.mood})
    - Camera angle and framing
 
@@ -220,27 +233,27 @@ Respond with a JSON array of scene objects. Each object must have:
 Be exhaustive and precise in the prompts.`;
 
   const response = await fetch(`${BASE_URL}/${MODEL_TEXT}:generateContent`, {
-    method: 'POST',
+    method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
       contents: [{ parts: [{ text: systemPrompt }] }],
       generationConfig: {
-        response_mime_type: 'application/json',
-        thinking_config: { thinking_level: THINKING_LEVEL }
-      }
-    })
+        response_mime_type: "application/json",
+        thinking_config: { thinking_level: THINKING_LEVEL },
+      },
+    }),
   });
 
   if (!response.ok) {
     const err = await response.json();
-    throw new Error(err.error?.message || 'Scene decomposition failed');
+    throw new Error(err.error?.message || "Scene decomposition failed");
   }
 
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  
-  if (!text) throw new Error('No response from Gemini');
-  
+
+  if (!text) throw new Error("No response from Gemini");
+
   try {
     const scenes = JSON.parse(text);
     return scenes.map((scene: any, index: number) => ({
@@ -249,11 +262,11 @@ Be exhaustive and precise in the prompts.`;
       basePrompt: scene.basePrompt,
       currentImagePrompt: scene.basePrompt,
       validationLog: [],
-      overallStatus: 'pending' as const
+      overallStatus: "pending" as const,
     }));
   } catch (e) {
-    console.error('Failed to parse scenes JSON:', text);
-    throw new Error('Invalid JSON response from Gemini');
+    console.error("Failed to parse scenes JSON:", text);
+    throw new Error("Invalid JSON response from Gemini");
   }
 };
 
@@ -268,107 +281,117 @@ export interface ChatResponse {
 }
 
 export const chatWithDirector = async (
-  history: ChatMessage[], 
-  userMessage: string, 
+  history: ChatMessage[],
+  userMessage: string,
   visualBible?: VisualBible,
   enableFunctionCalling: boolean = true,
   images: string[] = []
 ): Promise<ChatResponse> => {
-  if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
+  if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
   const systemPrompt = `You are an expert film director and creative consultant helping build a comprehensive Visual Bible.
   
-  ${visualBible ? `Current Visual Bible:
+  ${
+    visualBible
+      ? `Current Visual Bible:
   - Title: ${visualBible.name}
   - Mood: ${visualBible.colorPalette.mood}
-  - Themes: ${visualBible.narrativeThemes.join(', ')}
-  ` : ''}
+  - Themes: ${visualBible.narrativeThemes.join(", ")}
+  `
+      : ""
+  }
 
   Your goal is to help the user refine this vision.
-  If the user asks a question, ANSWER IT directly.
-  If the user explicitly asks to update data (e.g., "change hair to blue", "add a scar"), use the available tools.
-  DO NOT call tools if the user is just asking a question or showing an image.
+  
+  RULES:
+  1. If the user asks a question, ANSWER IT directly.
+  2. ONLY call tools if the user EXPLICITLY asks to update data (e.g., "change hair to blue", "add a scar", "save this").
+  3. DO NOT call tools for greetings (e.g., "hey", "hi") or general discussion.
+  4. If the user provides an image without instructions, analyze it and ask how they want to use it.
   `;
 
   const contents: any[] = [
-    { role: 'user', parts: [{ text: systemPrompt }] },
-    ...history.map(msg => {
+    { role: "user", parts: [{ text: systemPrompt }] },
+    ...history.map((msg) => {
+      // OPTIMIZATION: Do NOT send base64 images for past history. It burns tokens.
+      // Replace with a placeholder so the model knows an image was there.
       const parts: any[] = [{ text: msg.content }];
       if (msg.images && msg.images.length > 0) {
-        msg.images.forEach(img => {
-           const cleanRef = img.replace(/^data:image\/\w+;base64,/, '');
-           parts.push({ inline_data: { mime_type: 'image/png', data: cleanRef } });
-        });
+        parts.push({ text: `[User sent ${msg.images.length} image(s) here]` });
       }
       return {
-        role: msg.sender === 'user' ? 'user' : 'model',
-        parts
+        role: msg.sender === "user" ? "user" : "model",
+        parts,
       };
-    })
+    }),
   ];
 
-  // Construct current message parts
+  // Construct current message parts - ONLY send images for the CURRENT turn
   const currentParts: any[] = [{ text: userMessage }];
   if (images && images.length > 0) {
-    images.forEach(img => {
-       const cleanRef = img.replace(/^data:image\/\w+;base64,/, '');
-       currentParts.push({ inline_data: { mime_type: 'image/png', data: cleanRef } });
+    images.forEach((img) => {
+      const cleanRef = img.replace(/^data:image\/\w+;base64,/, "");
+      currentParts.push({
+        inline_data: { mime_type: "image/png", data: cleanRef },
+      });
     });
   }
-  
-  contents.push({ role: 'user', parts: currentParts });
+
+  contents.push({ role: "user", parts: currentParts });
 
   // Import function declarations dynamically
-  const { VISUAL_BIBLE_FUNCTIONS } = await import('./visualBibleFunctions');
+  const { VISUAL_BIBLE_FUNCTIONS } = await import("./visualBibleFunctions");
 
   const body: any = { contents };
-  
+
   if (enableFunctionCalling) {
-    body.tools = [{
-      function_declarations: VISUAL_BIBLE_FUNCTIONS
-    }];
+    body.tools = [
+      {
+        function_declarations: VISUAL_BIBLE_FUNCTIONS,
+      },
+    ];
   }
 
   const response = await fetch(`${BASE_URL}/${MODEL_TEXT}:generateContent`, {
-    method: 'POST',
+    method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
       ...body,
       generationConfig: {
-        thinking_config: { thinking_level: THINKING_LEVEL }
-      }
-    })
+        thinking_config: { thinking_level: THINKING_LEVEL },
+      },
+    }),
   });
 
   if (!response.ok) {
     const err = await response.json();
-    throw new Error(err.error?.message || 'Chat failed');
+    throw new Error(err.error?.message || "Chat failed");
   }
 
   const data = await response.json();
   const candidate = data.candidates?.[0];
-  
+
   if (!candidate) {
-    return { text: '...' };
+    return { text: "..." };
   }
 
   const parts = candidate.content?.parts || [];
-  
+
   // Check if there are function calls
   const functionCalls = parts
     .filter((part: any) => part.functionCall)
     .map((part: any) => ({
       name: part.functionCall.name,
-      args: part.functionCall.args
+      args: part.functionCall.args,
     }));
 
   // Get text response if available
   const textParts = parts.filter((part: any) => part.text);
-  const text = textParts.map((part: any) => part.text).join('\n\n');
+  const text = textParts.map((part: any) => part.text).join("\n\n");
 
   return {
     text: text || undefined,
-    functionCalls: functionCalls.length > 0 ? functionCalls : undefined
+    functionCalls: functionCalls.length > 0 ? functionCalls : undefined,
   };
 };
 
@@ -379,21 +402,21 @@ export const chatWithDirector = async (
 export interface ContextStack {
   narrative: string;
   visualBible: VisualBible;
-  worldState?: any; 
+  worldState?: any;
   referenceImages: {
     character: string[]; // Base64s
-    setting: string[];   // Base64s
+    setting: string[]; // Base64s
     previousFrame: string | string[] | null; // Base64 or array of Base64s
   };
   validationHistory?: any[];
 }
 
 export const generateSceneImage = async (
-  prompt: string, 
+  prompt: string,
   contextStack: ContextStack,
-  aspectRatio: string = '16:9'
+  aspectRatio: string = "16:9"
 ): Promise<{ base64: string; seed?: number; thoughtSignature?: string }> => {
-  if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
+  if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
   // Construct the "Oversaturated" Prompt
   const systemPrompt = `Generate a high-fidelity, 4K cinematic image based on the following scene.
@@ -415,58 +438,63 @@ export const generateSceneImage = async (
 
   // Inject Reference Images (The "Stack")
   // 1. Character Refs
-  contextStack.referenceImages.character.forEach(ref => {
-    parts.push({ inline_data: { mime_type: 'image/png', data: ref } });
+  contextStack.referenceImages.character.forEach((ref) => {
+    parts.push({ inline_data: { mime_type: "image/png", data: ref } });
   });
-  
+
   // 2. Setting Refs
-  contextStack.referenceImages.setting.forEach(ref => {
-    parts.push({ inline_data: { mime_type: 'image/png', data: ref } });
+  contextStack.referenceImages.setting.forEach((ref) => {
+    parts.push({ inline_data: { mime_type: "image/png", data: ref } });
   });
 
   // 3. Previous Frames (Continuity Anchors)
   if (contextStack.referenceImages.previousFrame) {
     if (Array.isArray(contextStack.referenceImages.previousFrame)) {
-      contextStack.referenceImages.previousFrame.forEach(ref => {
-        parts.push({ inline_data: { mime_type: 'image/png', data: ref } });
+      contextStack.referenceImages.previousFrame.forEach((ref) => {
+        parts.push({ inline_data: { mime_type: "image/png", data: ref } });
       });
     } else {
-      parts.push({ inline_data: { mime_type: 'image/png', data: contextStack.referenceImages.previousFrame } });
+      parts.push({
+        inline_data: {
+          mime_type: "image/png",
+          data: contextStack.referenceImages.previousFrame,
+        },
+      });
     }
   }
 
   const response = await fetch(`${BASE_URL}/${MODEL_VISION}:generateContent`, {
-    method: 'POST',
+    method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
       contents: [{ parts }],
       generationConfig: {
-        response_modalities: ['IMAGE'],
-        thinking_config: { thinking_level: THINKING_LEVEL }, // High reasoning for composition
+        response_modalities: ["IMAGE"],
+        // thinking_config REMOVED for Vision model compatibility
         image_config: {
-          aspect_ratio: aspectRatio === '2K' ? '16:9' : aspectRatio, // Map '2K' to a ratio, size is handled below
-          image_size: aspectRatio === '2K' ? '2K' : '4K' // Support 2K request
-        }
-      }
-    })
+          aspect_ratio: aspectRatio === "2K" ? "16:9" : aspectRatio, // Map '2K' to a ratio, size is handled below
+          image_size: aspectRatio === "2K" ? "2K" : "4K", // Support 2K request
+        },
+      },
+    }),
   });
 
   if (!response.ok) {
     const err = await response.json();
-    throw new Error(err.error?.message || 'Image generation failed');
+    throw new Error(err.error?.message || "Image generation failed");
   }
 
   const data = await response.json();
   const candidate = data.candidates?.[0];
   const imagePart = candidate?.content?.parts?.find((p: any) => p.inline_data);
-  
+
   if (!imagePart?.inline_data?.data) {
-    throw new Error('No image data received from Gemini');
+    throw new Error("No image data received from Gemini");
   }
 
   return {
     base64: imagePart.inline_data.data,
-    thoughtSignature: imagePart.thoughtSignature // Capture the "Memory"
+    thoughtSignature: imagePart.thoughtSignature, // Capture the "Memory"
   };
 };
 
@@ -477,61 +505,52 @@ export const editSceneImage = async (
   editInstructions: string,
   thoughtSignature?: string // The "Memory" of the previous generation
 ): Promise<{ base64: string; thoughtSignature?: string }> => {
-  if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
+  if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
   const parts: any[] = [
     { text: editInstructions },
     {
       inline_data: {
-        mime_type: 'image/png',
-        data: existingImageBase64
-      }
-    }
+        mime_type: "image/png",
+        data: existingImageBase64,
+      },
+    },
   ];
 
   // If we have a thought signature, we MUST send it back to maintain reasoning context
   if (thoughtSignature) {
-    parts.push({ thought_signature: thoughtSignature }); // Hypothetical field based on "thoughtSignature" usage in docs
-    // Note: The docs say "return these signatures back to the model in your request exactly as they were received".
-    // Usually this is part of the 'content' or 'parts' structure depending on the specific API version.
-    // For now, we'll assume it's attached to the part or content. 
-    // *Correction based on docs*: "Signatures are guaranteed on the first part... You must return all of these signatures".
-    // We will attach it to the image part if possible, or as a separate property if the SDK supports it.
-    // Since we are using raw REST, we need to be careful. 
-    // The docs example shows: "parts": [ { "text": "...", "thoughtSignature": "<Sig>" } ]
-    // So we will attach it to the text part.
-    parts[0].thoughtSignature = thoughtSignature; 
+    parts[0].thoughtSignature = thoughtSignature;
   }
 
   const response = await fetch(`${BASE_URL}/${MODEL_VISION}:generateContent`, {
-    method: 'POST',
+    method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
       contents: [{ parts }],
       generationConfig: {
-        response_modalities: ['IMAGE'],
-        thinking_config: { thinking_level: THINKING_LEVEL },
-        image_config: { image_size: '4K' }
-      }
-    })
+        response_modalities: ["IMAGE"],
+        // thinking_config REMOVED for Vision model compatibility
+        image_config: { image_size: "4K" },
+      },
+    }),
   });
 
   if (!response.ok) {
     const err = await response.json();
-    throw new Error(err.error?.message || 'Image editing failed');
+    throw new Error(err.error?.message || "Image editing failed");
   }
 
   const data = await response.json();
   const candidate = data.candidates?.[0];
   const imagePart = candidate?.content?.parts?.find((p: any) => p.inline_data);
-  
+
   if (!imagePart?.inline_data?.data) {
-    throw new Error('No edited image data received from Gemini');
+    throw new Error("No edited image data received from Gemini");
   }
 
   return {
     base64: imagePart.inline_data.data,
-    thoughtSignature: imagePart.thoughtSignature
+    thoughtSignature: imagePart.thoughtSignature,
   };
 };
 
@@ -539,38 +558,38 @@ export const editSceneImage = async (
 
 export const generateSceneVideo = async (
   imageBase64: string,
-  prompt: string, 
+  prompt: string,
   referenceImages: string[] = [], // NEW: Veo 3.1 Reference Images
   duration: number = 5
 ): Promise<{ uri?: string; operationId?: string }> => {
-  if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
+  if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
   // Construct Reference Image Objects for Veo
-  const references = referenceImages.map(ref => ({
+  const references = referenceImages.map((ref) => ({
     image: { image64: ref },
-    reference_type: 'asset' // As per docs
+    reference_type: "asset", // As per docs
   }));
 
   const response = await fetch(`${BASE_URL}/${MODEL_VIDEO}:generateVideo`, {
-    method: 'POST',
+    method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
       prompt: { text: prompt },
       image: { image64: imageBase64 }, // Start frame
       duration_seconds: duration,
       fps: 24,
-      aspect_ratio: '16:9',
-      reference_images: references.length > 0 ? references : undefined // Inject the references
-    })
+      aspect_ratio: "16:9",
+      reference_images: references.length > 0 ? references : undefined, // Inject the references
+    }),
   });
 
   if (!response.ok) {
     const err = await response.json();
-    throw new Error(err.error?.message || 'Video generation failed');
+    throw new Error(err.error?.message || "Video generation failed");
   }
 
   const data = await response.json();
-  
+
   // Check if it's an async operation
   if (data.name && !data.videoUri) {
     return { operationId: data.name };
@@ -586,15 +605,24 @@ export const validateImage = async (
   scene: SceneNode,
   referenceImageBase64: string | null,
   visualBible: VisualBible,
-  validationType: 'IMMEDIATE' | 'SHORT_TERM' | 'MEDIUM_TERM' | 'LONG_TERM'
-): Promise<{ passed: boolean; score: number; critique: string; fixInstructions?: string }> => {
-  if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
+  validationType: "IMMEDIATE" | "SHORT_TERM" | "MEDIUM_TERM" | "LONG_TERM"
+): Promise<{
+  passed: boolean;
+  score: number;
+  critique: string;
+  fixInstructions?: string;
+}> => {
+  if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
   const validationFocus = {
-    'IMMEDIATE': 'Focus on technical quality, composition, and whether this image matches the intended narrative moment.',
-    'SHORT_TERM': 'Focus on immediate visual continuity: lighting consistency, character pose/position flow, and motion coherence from the reference image.',
-    'MEDIUM_TERM': 'Focus on pacing, character appearance consistency (clothing, hair, features), and evolving mood across this sequence.',
-    'LONG_TERM': 'Focus on protagonist consistency from the very first frame, overall genre adherence, color palette consistency, and core Visual Bible principles.'
+    IMMEDIATE:
+      "Focus on technical quality, composition, and whether this image matches the intended narrative moment.",
+    SHORT_TERM:
+      "Focus on immediate visual continuity: lighting consistency, character pose/position flow, and motion coherence from the reference image.",
+    MEDIUM_TERM:
+      "Focus on pacing, character appearance consistency (clothing, hair, features), and evolving mood across this sequence.",
+    LONG_TERM:
+      "Focus on protagonist consistency from the very first frame, overall genre adherence, color palette consistency, and core Visual Bible principles.",
   };
 
   const prompt = `You are a brutal film critic analyzing this generated image for a narrative video project.
@@ -607,11 +635,28 @@ Narrative: "${scene.narrativeSegment}"
 Intended Prompt: "${scene.currentImagePrompt}"
 
 **Visual Bible Requirements**:
-- Color Palette: ${visualBible.colorPalette.mood} (${visualBible.colorPalette.hexCodes.join(', ')})
-- Cinematography: ${visualBible.cinematography.lightingStyle}, ${visualBible.cinematography.lensType}
-- Key Characters: ${Object.entries(visualBible.characters).map(([id, c]) => `${c.name}: ${Array.isArray(c.keyFeatures) ? c.keyFeatures.join(', ') : c.keyFeatures || 'N/A'}`).join(' | ')}
+- Color Palette: ${
+    visualBible.colorPalette.mood
+  } (${visualBible.colorPalette.hexCodes.join(", ")})
+- Cinematography: ${visualBible.cinematography.lightingStyle}, ${
+    visualBible.cinematography.lensType
+  }
+- Key Characters: ${Object.entries(visualBible.characters)
+    .map(
+      ([id, c]) =>
+        `${c.name}: ${
+          Array.isArray(c.keyFeatures)
+            ? c.keyFeatures.join(", ")
+            : c.keyFeatures || "N/A"
+        }`
+    )
+    .join(" | ")}
 
-${referenceImageBase64 ? 'Compare this image against the reference image for continuity.' : 'This is a standalone validation.'}
+${
+  referenceImageBase64
+    ? "Compare this image against the reference image for continuity."
+    : "This is a standalone validation."
+}
 
 Provide your response as JSON:
 {
@@ -624,54 +669,54 @@ Provide your response as JSON:
 Be harsh but constructive. Score 7+ passes, below 7 fails.`;
 
   const parts: any[] = [{ text: prompt }];
-  
+
   if (referenceImageBase64) {
     parts.push({
       inline_data: {
-        mime_type: 'image/png',
-        data: referenceImageBase64
-      }
+        mime_type: "image/png",
+        data: referenceImageBase64,
+      },
     });
   }
-  
+
   parts.push({
     inline_data: {
-      mime_type: 'image/png',
-      data: imageBase64
-    }
+      mime_type: "image/png",
+      data: imageBase64,
+    },
   });
 
   const response = await fetch(`${BASE_URL}/${MODEL_VISION}:generateContent`, {
-    method: 'POST',
+    method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
       contents: [{ parts }],
       generationConfig: {
-        response_mime_type: 'application/json',
-        thinking_config: { thinking_level: THINKING_LEVEL } // High reasoning for critique
-      }
-    })
+        response_mime_type: "application/json",
+        // thinking_config REMOVED for Vision model compatibility
+      },
+    }),
   });
 
   if (!response.ok) {
     const err = await response.json();
-    throw new Error(err.error?.message || 'Validation failed');
+    throw new Error(err.error?.message || "Validation failed");
   }
 
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  
+
   try {
     const result = JSON.parse(text);
     return {
       passed: result.score >= 7,
       score: result.score,
       critique: result.critique,
-      fixInstructions: result.score < 7 ? result.fixInstructions : undefined
+      fixInstructions: result.score < 7 ? result.fixInstructions : undefined,
     };
   } catch (e) {
-    console.error('Failed to parse validation JSON:', text);
-    return { passed: false, score: 0, critique: 'Validation parsing failed' };
+    console.error("Failed to parse validation JSON:", text);
+    return { passed: false, score: 0, critique: "Validation parsing failed" };
   }
 };
 
@@ -679,47 +724,51 @@ export const generateItemReference = async (
   prompt: string,
   referenceImages: string[] = []
 ): Promise<{ base64: string; thoughtSignature?: string }> => {
-  if (!API_KEY) throw new Error('Missing GEMINI_API_KEY');
+  if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
   const parts: any[] = [{ text: prompt }];
 
   // Attach reference images if provided
-  referenceImages.forEach(ref => {
+  referenceImages.forEach((ref) => {
     // Strip prefix if present
-    const cleanRef = ref.replace(/^data:image\/\w+;base64,/, '');
-    parts.push({ inline_data: { mime_type: 'image/png', data: cleanRef } });
+    const cleanRef = ref.replace(/^data:image\/\w+;base64,/, "");
+    parts.push({ inline_data: { mime_type: "image/png", data: cleanRef } });
   });
 
   const response = await fetch(`${BASE_URL}/${MODEL_VISION}:generateContent`, {
-    method: 'POST',
+    method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
       contents: [{ parts }],
       generationConfig: {
-        response_modalities: ['IMAGE'],
-        thinking_config: { thinking_level: THINKING_LEVEL },
+        response_modalities: ["IMAGE"],
+        // thinking_config REMOVED for Vision model compatibility
         image_config: {
-          aspect_ratio: '1:1', // Square for reference cards
-          image_size: '2K'
-        }
-      }
-    })
+          aspect_ratio: "1:1", // Square for reference cards
+          image_size: "2K",
+        },
+      },
+    }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Gemini Vision API Error: ${response.status} - ${errorText}`);
+    throw new Error(
+      `Gemini Vision API Error: ${response.status} - ${errorText}`
+    );
   }
 
   const data = await response.json();
-  const imagePart = data.candidates?.[0]?.content?.parts?.find((p: any) => p.inline_data);
+  const imagePart = data.candidates?.[0]?.content?.parts?.find(
+    (p: any) => p.inline_data
+  );
 
   if (!imagePart) {
-    throw new Error('No image generated in response');
+    throw new Error("No image generated in response");
   }
 
   return {
     base64: imagePart.inline_data.data,
-    thoughtSignature: imagePart.thoughtSignature
+    thoughtSignature: imagePart.thoughtSignature,
   };
 };

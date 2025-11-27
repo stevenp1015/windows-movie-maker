@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Loader, CheckCircle, AlertCircle, RefreshCw, Eye } from 'lucide-react';
 import { type VisualBible, type CharacterTurnaround } from '../../types';
-import { generateCharacterTurnaround, regenerateTurnaroundView } from '../../services/characterTurnaround';
+import { generateCharacterTurnaround } from '../../services/characterTurnaround';
 
 interface CharacterTurnaroundPanelProps {
   visualBible: VisualBible;
@@ -156,7 +156,7 @@ const CharacterTurnaroundPanel: React.FC<CharacterTurnaroundPanelProps> = ({
                           {view?.base64 ? (
                             <div className="aspect-[2/3] bg-gray-200 rounded overflow-hidden group relative">
                               <img
-                                src={`data:image/png;base64,${view.base64}`}
+                                src={view.base64.startsWith('data:') ? view.base64 : `data:image/png;base64,${view.base64}`}
                                 alt={`${character.name} - ${viewLabels[viewName]}`}
                                 className="w-full h-full object-cover"
                               />
@@ -222,7 +222,7 @@ const CharacterTurnaroundPanel: React.FC<CharacterTurnaroundPanelProps> = ({
         >
           <div className="max-w-4xl max-h-full">
             <img
-              src={`data:image/png;base64,${viewingImage}`}
+              src={viewingImage.startsWith('data:') ? viewingImage : `data:image/png;base64,${viewingImage}`}
               alt="Full size view"
               className="max-w-full max-h-full object-contain"
               onClick={(e) => e.stopPropagation()}
