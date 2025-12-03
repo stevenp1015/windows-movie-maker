@@ -357,6 +357,18 @@ export const chatWithDirector = async (
     headers: getHeaders(),
     body: JSON.stringify({
       ...body,
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_ONLY_HIGH",
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_ONLY_HIGH",
+        },
+      ],
       generationConfig: {
         thinking_config: { thinking_level: THINKING_LEVEL },
       },
@@ -414,50 +426,80 @@ export interface ContextStack {
 export const generateSceneImage = async (
   prompt: string,
   contextStack: ContextStack,
-  aspectRatio: string = "16:9"
+  aspectRatio: "16:9" | "2K" | "4K" = "2K",
+  inputImage?: string,
+  thoughtSignature?: string
 ): Promise<{ base64: string; seed?: number; thoughtSignature?: string }> => {
   if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
-  // Construct the "Oversaturated" Prompt
-  const systemPrompt = `Generate a high-fidelity, 4K cinematic image based on the following scene.
+  // Construct the System Prompt
+  const systemPrompt = `
+  You are an expert cinematographer and visual effects artist.
   
-  SCENE PROMPT: "${prompt}"
-
-  CRITICAL VISUAL CONTEXT (YOU MUST ADHERE TO THIS):
-  - Cinematography: ${contextStack.visualBible.cinematography.lightingStyle}, ${contextStack.visualBible.cinematography.lensType}
-  - Color Palette: ${contextStack.visualBible.colorPalette.mood}
+  TASK:
+  ${
+    inputImage
+      ? "Edit the provided image based on the instructions below."
+      : "Generate a high-fidelity movie scene based on the description below."
+  }
   
-  REFERENCE ADHERENCE:
-  - The character in the generated image MUST visually match the provided Character Reference images EXACTLY.
-  - The setting MUST match the Setting Reference images.
-  - The lighting and color grading MUST be consistent with the Previous Frame (if provided).
+  NARRATIVE CONTEXT:
+  "${contextStack.narrative}"
   
-  Output the image in ${aspectRatio} aspect ratio.`;
+  INSTRUCTIONS:
+  ${prompt}
+  
+  REQUIREMENTS:
+  - Photorealistic, cinematic lighting, 35mm film grain.
+  - Consistent character identity with provided references.
+  - Maintain continuity with the previous frame (if provided).
+  ${
+    inputImage
+      ? "- PRESERVE the composition and details of the input image unless explicitly asked to change them."
+      : ""
+  }
+  `;
 
   const parts: any[] = [{ text: systemPrompt }];
 
-  // Inject Reference Images (The "Stack")
+  // Helper to clean base64
+  const cleanBase64 = (str: string) =>
+    str.replace(/^data:image\/\w+;base64,/, "");
+
+  // 0. Input Image (For Editing)
+  if (inputImage) {
+    parts.push({
+      inline_data: { mime_type: "image/png", data: cleanBase64(inputImage) },
+    });
+  }
+
   // 1. Character Refs
   contextStack.referenceImages.character.forEach((ref) => {
-    parts.push({ inline_data: { mime_type: "image/png", data: ref } });
+    parts.push({
+      inline_data: { mime_type: "image/png", data: cleanBase64(ref) },
+    });
   });
 
   // 2. Setting Refs
   contextStack.referenceImages.setting.forEach((ref) => {
-    parts.push({ inline_data: { mime_type: "image/png", data: ref } });
+    parts.push({
+      inline_data: { mime_type: "image/png", data: cleanBase64(ref) },
+    });
   });
 
   // 3. Previous Frames (Continuity Anchors)
   if (contextStack.referenceImages.previousFrame) {
     if (Array.isArray(contextStack.referenceImages.previousFrame)) {
       contextStack.referenceImages.previousFrame.forEach((ref) => {
-        parts.push({ inline_data: { mime_type: "image/png", data: ref } });
+        parts.push({
+          inline_data: { mime_type: "image/png", data: cleanBase64(ref) },
+        });
       });
     } else {
       parts.push({
         inline_data: {
           mime_type: "image/png",
-          data: contextStack.referenceImages.previousFrame,
+          data: cleanBase64(contextStack.referenceImages.previousFrame),
         },
       });
     }
@@ -470,10 +512,9 @@ export const generateSceneImage = async (
       contents: [{ parts }],
       generationConfig: {
         response_modalities: ["IMAGE"],
-        // thinking_config REMOVED for Vision model compatibility
-        image_config: {
-          aspect_ratio: aspectRatio === "2K" ? "16:9" : aspectRatio, // Map '2K' to a ratio, size is handled below
-          image_size: aspectRatio === "2K" ? "2K" : "4K", // Support 2K request
+        imageConfig: {
+          aspectRatio: aspectRatio === "2K" ? "16:9" : aspectRatio,
+          imageSize: aspectRatio === "4K" ? "4K" : "2K",
         },
       },
     }),
@@ -486,15 +527,27 @@ export const generateSceneImage = async (
 
   const data = await response.json();
   const candidate = data.candidates?.[0];
-  const imagePart = candidate?.content?.parts?.find((p: any) => p.inline_data);
 
-  if (!imagePart?.inline_data?.data) {
+  // Handle both camelCase (Gemini 3) and snake_case (Legacy/REST)
+  const imagePart = candidate?.content?.parts?.find(
+    (p: any) => p.inlineData || p.inline_data
+  );
+
+  if (!imagePart) {
+    const textPart = candidate?.content?.parts?.find((p: any) => p.text);
+    if (textPart) throw new Error(`Gemini returned text: "${textPart.text}"`);
     throw new Error("No image data received from Gemini");
   }
 
+  const inlineData = imagePart.inlineData || imagePart.inline_data;
+
+  if (!inlineData?.data) {
+    throw new Error("Image part found but data is missing");
+  }
+
   return {
-    base64: imagePart.inline_data.data,
-    thoughtSignature: imagePart.thoughtSignature, // Capture the "Memory"
+    base64: inlineData.data,
+    thoughtSignature: imagePart.thoughtSignature,
   };
 };
 
@@ -530,7 +583,7 @@ export const editSceneImage = async (
       generationConfig: {
         response_modalities: ["IMAGE"],
         // thinking_config REMOVED for Vision model compatibility
-        image_config: { image_size: "4K" },
+        image_config: { image_size: "2K" },
       },
     }),
   });

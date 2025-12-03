@@ -70,7 +70,7 @@ const CharacterTurnaroundPanel: React.FC<CharacterTurnaroundPanelProps> = ({
       <div className="p-4 bg-purple-50 border-b border-purple-200">
         <h3 className="text-sm font-bold text-purple-900">Character Solidification</h3>
         <p className="text-xs text-purple-700 mt-1">
-          Generate 4K reference turnarounds for perfect character consistency
+          Generate 2K reference turnarounds for perfect character consistency
         </p>
       </div>
 

@@ -7,8 +7,6 @@ import {
 } from "../../types";
 import CodexView from "./CodexView";
 import CharacterTurnaroundPanel from "./CharacterTurnaroundPanel";
-import CodexItemEditor from "./CodexItemEditor";
-import { analyzeNarrative } from "../../services/gemini";
 
 interface DirectorSanctumProps {
   visualBible: VisualBible;
@@ -67,36 +65,51 @@ const DirectorSanctum: React.FC<DirectorSanctumProps> = ({
 
   if (phase === "planning") {
     return (
-      <div className="flex flex-col h-full p-6 space-y-6">
+      <div className="!w-full flex flex-1 items-start justify-start bg-cyan-500 h-full p-6 space-y-6">
+
         <div>
-          <h2 className="text-2xl font-bold mb-6">Director's Sanctum</h2>
-          <p className="text-sm text-[var(--text-secondary)] p-4">
-            Welcome to the Director's Sanctum. Here you can plan your narrative,
-            define the visual style, and prepare for production.
+          <h2
+            className="text-4xl text-zinc-200 font-bold mb-6">
+            Director's Sanctum
+          </h2>
+          <p
+            className="text-sm text-zinc-400 p-4">
+            You put your shit here, and we'll make it into a movie.
           </p>
         </div>
 
         <div className="flex-1 flex flex-col gap-4 overflow-hidden">
           <div className="flex-1 flex flex-col">
-            <label className="text-sm font-medium mb-2">Narrative</label>
+            <label
+              className="text-sm text-zinc-200 font-medium mb-2">
+              Narrative
+            </label>
+            <div className="rim-spinner"></div>
             <textarea
               value={narrative}
               onChange={(e) => setNarrative(e.target.value)}
               placeholder="Paste your story, novel, screenplay, or narrative here..."
-              className={`flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-light shadow-sm transition-all focus:shadow-inner focus:outline-none resize-none ${narrative ? "not-italic" : "italic text-gray-400"
+              className={`flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-light shadow-sm transition-all focus:shadow-inner focus:outline-none resize-none 
+                ${narrative
+                  ? "not-italic"
+                  : "italic text-gray-400"
                 }`}
             />
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm font-medium mb-2">
+            <label
+              className="text-sm font-medium mb-2">
               Style Notes (Optional)
             </label>
             <textarea
               value={styleNotes}
               onChange={(e) => setStyleNotes(e.target.value)}
               placeholder="Style notes . . ."
-              className={`border border-slate-200 rounded-xl px-3 py-2 text-xs font-light italic shadow-sm transition-all focus:shadow-inner focus:outline-none resize-none h-24 ${styleNotes ? "not-italic" : "italic text-gray-400"
+              className={`border border-slate-200 rounded-xl px-3 py-2 text-xs font-light italic shadow-sm transition-all focus:shadow-inner focus:outline-none resize-none h-24 
+                ${styleNotes
+                  ? "not-italic"
+                  : "italic text-gray-400"
                 }`}
             />
           </div>
@@ -117,17 +130,16 @@ const DirectorSanctum: React.FC<DirectorSanctumProps> = ({
   }
 
   if (phase === "decomposition") {
-    const [activeTab, setActiveTab] = useState<"codex" | "turnarounds">(
-      "codex"
-    );
+    const [activeTab, setActiveTab] = useState<"codex" | "turnarounds">("codex");
 
     return (
-      <div className="flex flex-col h-full w-full md:w-[50vw] border-r border-white/10 bg-white/5 backdrop-blur-sm">
+      <div className="flex flex-col h-full w-full border-r border-white/10 bg-white/5 backdrop-blur-sm translatez-0">
 
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex-shrink-0">
           <h2 className="text-2xl text-zinc-200 font-bold mb-2">Visual Bible</h2>
-          <p className="text-sm text-zinc-400 mb-4">
+          <p
+            className="text-sm text-zinc-400 mb-4">
             Your comprehensive reference sheet for visual consistency
           </p>
 
@@ -137,21 +149,20 @@ const DirectorSanctum: React.FC<DirectorSanctumProps> = ({
             {/* CODEX TAB */}
             <button
               onClick={() => setActiveTab("codex")}
-              className={`relative px-4 py-2 text-sm rounded-lg font-bold transition-all duration-300 overflow-hidden ${activeTab === "codex"
-                ? "bg-[linear-gradient(155deg,theme(colors.slate.700)_0%,theme(colors.slate.800)_50%,theme(colors.slate.900)_100%)] white-lamp"
-                : "bg-[linear-gradient(155deg,theme(colors.slate.500)_0%,theme(colors.zinc.600)_50%,theme(colors.slate.700)_100%)] brightness-75 white-lamp-muted"
+              className={`tab-button ${activeTab === "codex"
+                ? "tab-button-active white-lamp"
+                : "tab-button-inactive tab-button-inactive-codex white-lamp-muted"
                 }`}
             >
-
-              {/* CODEX Rainbow Text */}
-              <span className={`relative z-10 bg-clip-text text-transparent bg-[linear-gradient(to_right,theme(colors.red.400)_-20%,theme(colors.orange.500),theme(colors.yellow.400),theme(colors.teal.400),theme(colors.violet.400))] ${activeTab === "codex" ? "opacity-100" : "opacity-100"}`}>
+              <span
+                className="tab-text-rainbow-codex">
                 Codex
               </span>
 
               {/* Shimmer Overlay */}
               {activeTab === "codex" && (
-                <div className="absolute inset-0 z-20 pointer-events-none mix-blend-overlay">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent w-1/2 h-full -skew-x-12 animate-shimmer" />
+                <div className="tab-shimmer-overlay">
+                  <div className="tab-shimmer-gradient animate-shimmer" />
                 </div>
               )}
             </button>
@@ -160,21 +171,23 @@ const DirectorSanctum: React.FC<DirectorSanctumProps> = ({
             {/* Character Solidification (Turnarounds) Tab */}
             <button
               onClick={() => setActiveTab("turnarounds")}
-              className={`relative px-4 py-2 text-sm rounded-lg font-bold transition-all duration-300 overflow-hidden ${activeTab === "turnarounds"
-                ? "bg-[linear-gradient(155deg,theme(colors.slate.700)_0%,theme(colors.slate.800)_50%,theme(colors.slate.900)_100%)] white-lamp"
-                : "bg-[linear-gradient(155deg,theme(colors.slate.700)_0%,theme(colors.zinc.600)_50%,theme(colors.slate.700)_100%)] brightness-90 white-lamp-muted"
+              className={`tab-button ${activeTab === "turnarounds"
+                ? "tab-button-active white-lamp"
+                : "tab-button-inactive tab-button-inactive-turnaround white-lamp-muted"
                 }`}
             >
-
-              {/* CHARACTER SOLIDIFICATION Rainbow Text */}
-              <span className={`relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-fuchsia-400 to-rose-400 ${activeTab === "turnarounds" ? "opacity-100" : "opacity-80 contrast-50 brightness-90"}`}>
+              <span
+                className={`tab-text-rainbow-turnaround ${activeTab === "turnarounds"
+                  ? ""
+                  : "tab-text-rainbow-turnaround-inactive"
+                  }`}>
                 Character Solidification
               </span>
 
               {/* Shimmer Overlay */}
               {activeTab === "turnarounds" && (
-                <div className="absolute inset-0 z-20 pointer-events-none mix-blend-overlay">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent w-1/2 h-full -skew-x-12 animate-shimmer" />
+                <div className="tab-shimmer-overlay">
+                  <div className="tab-shimmer-gradient animate-shimmer" />
                 </div>
               )}
             </button>
@@ -188,17 +201,32 @@ const DirectorSanctum: React.FC<DirectorSanctumProps> = ({
             <div className="p-6">
               <CodexView
                 visualBible={visualBible}
+                activeEditorItem={activeEditorItem}
                 onEdit={(type, id) => {
-                  console.log(
-                    "DirectorSanctum: Setting active editor item:",
-                    type,
-                    id
-                  );
-                  setActiveEditorItem({
-                    type: type as "character" | "setting",
-                    id,
-                  });
+                  if (document.startViewTransition) {
+                    document.startViewTransition(() => {
+                      setActiveEditorItem({
+                        type: type as "character" | "setting",
+                        id,
+                      });
+                    });
+                  } else {
+                    setActiveEditorItem({
+                      type: type as "character" | "setting",
+                      id,
+                    });
+                  }
                 }}
+                onCloseEditor={() => {
+                  if (document.startViewTransition) {
+                    document.startViewTransition(() => {
+                      setActiveEditorItem(null);
+                    });
+                  } else {
+                    setActiveEditorItem(null);
+                  }
+                }}
+                onUpdateBible={onUpdateBible}
               />
             </div>
           )}
@@ -263,17 +291,6 @@ const DirectorSanctum: React.FC<DirectorSanctumProps> = ({
             </details>
           </div>
         </div>
-
-        {/* Codex Item Editor Modal */}
-        {activeEditorItem && (
-          <CodexItemEditor
-            itemType={activeEditorItem.type}
-            itemId={activeEditorItem.id}
-            visualBible={visualBible}
-            onUpdate={(updatedBible) => onUpdateBible(updatedBible)}
-            onClose={() => setActiveEditorItem(null)}
-          />
-        )}
       </div>
     );
   }

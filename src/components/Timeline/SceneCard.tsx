@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { type SceneNode } from '../../types';
-import { 
-  Image as ImageIcon, 
-  Film, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Image as ImageIcon,
+  Film,
+  AlertCircle,
+  CheckCircle,
   RefreshCw,
   ChevronDown,
-  ChevronRight,
   Eye,
   Edit3,
   ThumbsUp,
@@ -25,12 +24,12 @@ interface SceneCardProps {
   onViewImage?: (base64: string) => void;
 }
 
-const SceneCard: React.FC<SceneCardProps> = ({ 
-  scene, 
-  onRegenerate, 
+const SceneCard: React.FC<SceneCardProps> = ({
+  scene,
+  onRegenerate,
   onForceApprove,
   onInjectFeedback,
-  onViewImage 
+  onViewImage
 }) => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [feedbackInput, setFeedbackInput] = useState('');
@@ -72,42 +71,54 @@ const SceneCard: React.FC<SceneCardProps> = ({
   };
 
   // Generate AI summary from narrative segment (first 100 chars or until period)
-  const sceneSummary = scene.narrativeSegment.length > 100 
+  const sceneSummary = scene.narrativeSegment.length > 100
     ? scene.narrativeSegment.substring(0, scene.narrativeSegment.indexOf('.') + 1 || 100) + '...'
     : scene.narrativeSegment;
 
-  const requiresIntervention = scene.overallStatus === 'image_failed_retries' || 
-                                scene.overallStatus === 'image_failed';
+  const requiresIntervention = scene.overallStatus === 'image_failed_retries' ||
+    scene.overallStatus === 'image_failed';
 
   const latestValidation = scene.validationLog[scene.validationLog.length - 1];
 
   return (
-    <div className={`reflective-card w-96 flex-shrink-0 flex flex-col bg-white border-2 ${
-      requiresIntervention ? 'border-red-500 shadow-[0_0_20px_rgba(255,0,0,0.3)]' : 'border-white/60'
-    }`}>
+    <div className={`scene-card w-96 flex-shrink-0 flex flex-col 
+       ${requiresIntervention
+        ? 'border-red-500 shadow-[0_0_20px_rgba(255,0,0,0.3)]'
+        : ''
+      }`}>
+      <div className="scene-card-rim">
+        <div className="scene-card-rim-spinner">
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="p-3 border-b border-black/10 bg-white/50 backdrop-blur-sm">
-        <div className="flex justify-between items-center mb-2">
-          <span className="font-mono text-sm font-bold text-[var(--text-primary)]">
+      <div className="p-3 border-b border-white/10">
+
+        <div className="flex absolute left-0 top-0 bg-slate-800 rounded-br-xl items-center gap-2">
+          <span className="font-mono pl-2 pt-2 ml-3 mr-3 mb-1 text-md font-bold text-[var(--text-secondary)]">
             SCENE {scene.index + 1}
           </span>
+        </div>
+
+        <div className="flex justify-end items-center mb-2">
+
           <div className="flex items-center gap-2">
-            <span 
+            <span
               className="text-[10px] font-mono px-2 py-0.5 rounded border"
-              style={{ 
+              style={{
                 color: getStatusColor(scene.overallStatus),
                 borderColor: getStatusColor(scene.overallStatus)
-              }}
-            >
+              }}>
               {getStatusLabel(scene.overallStatus)}
             </span>
-            <div 
-              className="w-2 h-2 rounded-full animate-pulse" 
+
+            <div
+              className="w-2 h-2 rounded-full animate-pulse"
               style={{ backgroundColor: getStatusColor(scene.overallStatus) }}
             />
           </div>
         </div>
-        
+
         {/* Scene Summary (Human-Readable) */}
         <p className="text-xs text-[var(--text-secondary)] italic">
           {sceneSummary}
@@ -115,10 +126,10 @@ const SceneCard: React.FC<SceneCardProps> = ({
       </div>
 
       {/* Image/Video Display */}
-      <div className="aspect-video bg-gray-100 relative group overflow-hidden">
+      <div className="aspect-video -z-20 bg-black/20 relative group overflow-hidden">
         {scene.imageData?.base64 ? (
           <>
-            <img 
+            <img
               src={`data:image/png;base64,${scene.imageData.base64}`}
               alt={`Scene ${scene.index + 1}`}
               className="w-full h-full object-cover cursor-pointer"
@@ -126,14 +137,14 @@ const SceneCard: React.FC<SceneCardProps> = ({
             />
             {/* Image Overlay Controls */}
             <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-              <button 
+              <button
                 onClick={() => onViewImage?.(scene.imageData!.base64)}
                 className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
                 title="View Full Size"
               >
                 <Eye className="w-4 h-4 text-black" />
               </button>
-              <button 
+              <button
                 onClick={() => setShowCustomPrompt(!showCustomPrompt)}
                 className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
                 title="Regenerate with Custom Prompt"
@@ -141,7 +152,7 @@ const SceneCard: React.FC<SceneCardProps> = ({
                 <RefreshCw className="w-4 h-4 text-black" />
               </button>
               {requiresIntervention && onForceApprove && (
-                <button 
+                <button
                   onClick={() => onForceApprove(scene.id)}
                   className="p-2 bg-green-500 rounded-full hover:bg-green-600 transition-colors"
                   title="Force Approve"
@@ -233,92 +244,96 @@ const SceneCard: React.FC<SceneCardProps> = ({
       )}
 
       {/* Expandable Sections */}
-      <div className="p-3 flex-1 flex flex-col gap-2 text-xs">
-        
+      <div className="p-3 flex-1 flex flex-col gap-2 text-sm">
+
         {/* FULL NARRATIVE SEGMENT */}
         <button
           onClick={() => toggleSection('narrative')}
-          className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100"
+          className="scene-card-button"
         >
           <div className="flex items-center gap-2">
-            <FileText className="w-3 h-3" />
-            <span className="font-bold">Full Narrative</span>
+            <FileText className="w-3 h-3 text-[var(--text-muted)]" />
+            <span className="text-[var(--text-secondary)]">Full Narrative</span>
           </div>
-          {expandedSections.has('narrative') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          <ChevronDown className={`w-3 h-3 text-[var(--text-muted)] transition-transform duration-300 ${expandedSections.has('narrative') ? 'rotate-180' : ''}`} />
         </button>
-        {expandedSections.has('narrative') && (
-          <div className="pl-5 pr-2 py-2 bg-gray-50/50 rounded text-xs text-[var(--text-secondary)] italic border-l-2 border-gray-300">
-            "{scene.narrativeSegment}"
+        <div className={`accordion-wrapper ${expandedSections.has('narrative') ? 'open' : ''}`}>
+          <div className="accordion-inner">
+            <div className="pl-5 pr-2 py-2 text-xs text-[var(--text-secondary)] italic border-l border-white/10 ml-1.5 my-1">
+              "{scene.narrativeSegment}"
+            </div>
           </div>
-        )}
+        </div>
 
         {/* AI-GENERATED IMAGE PROMPT */}
         <button
           onClick={() => toggleSection('prompt')}
-          className="flex items-center justify-between p-2 bg-purple-50 rounded hover:bg-purple-100"
+          className="scene-card-button"
         >
           <div className="flex items-center gap-2">
-            <Zap className="w-3 h-3 text-purple-600" />
-            <span className="font-bold text-purple-900">Image Generation Prompt</span>
+            <Zap className="w-3 h-3 text-purple-400" />
+            <span className="text-purple-200">Image Generation Prompt</span>
           </div>
-          {expandedSections.has('prompt') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          <ChevronDown className={`w-3 h-3 text-[var(--text-muted)] transition-transform duration-300 ${expandedSections.has('prompt') ? 'rotate-180' : ''}`} />
         </button>
-        {expandedSections.has('prompt') && (
-          <div className="pl-5 pr-2 py-2 bg-purple-50/50 rounded text-xs font-mono border-l-2 border-purple-300 max-h-40 overflow-y-auto">
-            {scene.currentImagePrompt || scene.basePrompt || 'No prompt generated yet'}
+        <div className={`accordion-wrapper ${expandedSections.has('prompt') ? 'open' : ''}`}>
+          <div className="accordion-inner">
+            <div className="pl-5 pr-2 py-2 text-xs font-mono border-l border-purple-500/30 text-purple-100/80 ml-1.5 my-1 max-h-40 overflow-y-auto">
+              {scene.currentImagePrompt || scene.basePrompt || 'No prompt generated yet'}
+            </div>
           </div>
-        )}
+        </div>
 
         {/* VALIDATION REPORTS */}
         {scene.validationLog.length > 0 && (
           <>
             <button
               onClick={() => toggleSection('validation')}
-              className={`flex items-center justify-between p-2 rounded ${
-                latestValidation?.passed 
-                  ? 'bg-green-50 hover:bg-green-100' 
-                  : 'bg-red-50 hover:bg-red-100'
-              }`}
+              className={`scene-card-button ${latestValidation?.passed
+                ? 'bg-green-500/10 hover:bg-green-500/20'
+                : 'bg-red-500/10 hover:bg-red-500/20'
+                }`}
             >
               <div className="flex items-center gap-2">
                 {latestValidation?.passed ? (
-                  <CheckCircle className="w-3 h-3 text-green-600" />
+                  <CheckCircle className="w-3 h-3 text-green-400" />
                 ) : (
-                  <AlertCircle className="w-3 h-3 text-red-600" />
+                  <AlertCircle className="w-3 h-3 text-red-400" />
                 )}
-                <span className={`font-bold ${latestValidation?.passed ? 'text-green-900' : 'text-red-900'}`}>
+                <span className={`font-bold ${latestValidation?.passed ? 'text-green-200' : 'text-red-200'}`}>
                   Validation ({scene.validationLog.length})
                 </span>
-                <span className={`text-[10px] font-mono ${latestValidation?.passed ? 'text-green-700' : 'text-red-700'}`}>
+                <span className={`text-[10px] font-mono ${latestValidation?.passed ? 'text-green-400' : 'text-red-400'}`}>
                   Score: {latestValidation?.score}/10
                 </span>
               </div>
-              {expandedSections.has('validation') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${expandedSections.has('validation') ? 'rotate-180' : ''} ${latestValidation?.passed ? 'text-green-400' : 'text-red-400'}`} />
             </button>
-            {expandedSections.has('validation') && (
-              <div className="pl-5 pr-2 py-2 space-y-2">
-                {scene.validationLog.map((log, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`p-2 rounded border-l-2 ${
-                      log.passed ? 'bg-green-50/50 border-green-400' : 'bg-red-50/50 border-red-400'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-mono font-bold">{log.type}</span>
-                      <span className="text-[10px] font-mono">{log.score}/10</span>
-                    </div>
-                    <p className="text-xs text-gray-700 mb-1">{log.critique}</p>
-                    {log.fixInstructions && (
-                      <div className="mt-2 pt-2 border-t border-black/10">
-                        <span className="text-[10px] font-bold text-orange-700">FIX INSTRUCTIONS:</span>
-                        <p className="text-xs text-orange-900 mt-1">{log.fixInstructions}</p>
+            <div className={`accordion-wrapper ${expandedSections.has('validation') ? 'open' : ''}`}>
+              <div className="accordion-inner">
+                <div className="pl-2 pr-2 py-2 space-y-2">
+                  {scene.validationLog.map((log, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2 rounded border-l-2 ${log.passed ? 'bg-green-500/5 border-green-500/30' : 'bg-red-500/5 border-red-500/30'
+                        }`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)]">{log.type}</span>
+                        <span className="text-[10px] font-mono text-[var(--text-muted)]">{log.score}/10</span>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <p className="text-xs text-[var(--text-secondary)] mb-1">{log.critique}</p>
+                      {log.fixInstructions && (
+                        <div className="mt-2 pt-2 border-t border-white/10">
+                          <span className="text-[10px] font-bold text-orange-400">FIX INSTRUCTIONS:</span>
+                          <p className="text-xs text-orange-200 mt-1">{log.fixInstructions}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
+            </div>
           </>
         )}
 
@@ -327,43 +342,45 @@ const SceneCard: React.FC<SceneCardProps> = ({
           <>
             <button
               onClick={() => toggleSection('feedback')}
-              className="flex items-center justify-between p-2 bg-blue-50 rounded hover:bg-blue-100"
+              className="scene-card-button"
             >
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-3 h-3 text-blue-600" />
-                <span className="font-bold text-blue-900">Inject Feedback</span>
+                <MessageSquare className="w-3 h-3 text-blue-400" />
+                <span className="font-bold text-blue-200">Inject Feedback</span>
               </div>
-              {expandedSections.has('feedback') ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              <ChevronDown className={`w-3 h-3 text-[var(--text-muted)] transition-transform duration-300 ${expandedSections.has('feedback') ? 'rotate-180' : ''}`} />
             </button>
-            {expandedSections.has('feedback') && (
-              <div className="pl-5 pr-2 py-2 bg-blue-50/50 rounded border-l-2 border-blue-300">
-                <textarea
-                  className="w-full px-2 py-1 text-xs border rounded"
-                  rows={3}
-                  placeholder="Describe what should be changed in this scene..."
-                  value={feedbackInput}
-                  onChange={(e) => setFeedbackInput(e.target.value)}
-                />
-                <button
-                  onClick={() => {
-                    if (feedbackInput.trim()) {
-                      onInjectFeedback(scene.id, feedbackInput);
-                      setFeedbackInput('');
-                    }
-                  }}
-                  disabled={!feedbackInput.trim()}
-                  className="mt-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Submit Feedback
-                </button>
+            <div className={`accordion-wrapper ${expandedSections.has('feedback') ? 'open' : ''}`}>
+              <div className="accordion-inner">
+                <div className="pl-5 pr-2 py-2 rounded border-l border-blue-500/30 ml-1.5 my-1">
+                  <textarea
+                    className="w-full px-2 py-1 text-xs border border-white/10 rounded bg-black/20 text-white placeholder-white/30 focus:border-blue-500/50 focus:outline-none"
+                    rows={3}
+                    placeholder="Describe what should be changed in this scene..."
+                    value={feedbackInput}
+                    onChange={(e) => setFeedbackInput(e.target.value)}
+                  />
+                  <button
+                    onClick={() => {
+                      if (feedbackInput.trim()) {
+                        onInjectFeedback(scene.id, feedbackInput);
+                        setFeedbackInput('');
+                      }
+                    }}
+                    disabled={!feedbackInput.trim()}
+                    className="mt-2 px-3 py-1 bg-blue-600/80 text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Submit Feedback
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
           </>
         )}
       </div>
 
       {/* Footer Stats */}
-      <div className="p-3 border-t border-black/5 bg-white/30">
+      <div className="p-3 border-t border-white/10 ">
         <div className="flex justify-between items-center text-[10px] font-mono text-[var(--text-muted)]">
           <div className="flex gap-3">
             {scene.videoData?.uri && (

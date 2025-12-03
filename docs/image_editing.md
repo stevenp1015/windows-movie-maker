@@ -1,59 +1,27 @@
-# Image generation with Gemini (aka Nano Banana 🍌) 
+# Image generation with Gemini (aka Nano Banana 🍌)
 
 Gemini can generate and process images conversationally. You can prompt Gemini with text, images, or a combination of both, allowing you to create, edit, and iterate on visuals with unprecedented control:
 
-*   **Text-to-Image:** Generate high-quality images from simple or complex text descriptions.
-*   **Image + Text-to-Image (Editing):** Provide an image and use text prompts to add, remove, or modify elements, change the style, or adjust the color grading.
-*   **Multi-Image to Image (Composition & style transfer):** Use multiple input images to compose a new scene or transfer the style from one image to another.
-*   **Iterative refinement:** Engage in a conversation to progressively refine your image over multiple turns, making small adjustments until it's perfect.
-*   **High-Fidelity text rendering:** Accurately generate images that contain legible and well-placed text, ideal for logos, diagrams, and posters.
+- **Text-to-Image:** Generate high-quality images from simple or complex text descriptions.
+- **Image + Text-to-Image (Editing):** Provide an image and use text prompts to add, remove, or modify elements, change the style, or adjust the color grading.
+- **Multi-Image to Image (Composition & style transfer):** Use multiple input images to compose a new scene or transfer the style from one image to another.
+- **Iterative refinement:** Engage in a conversation to progressively refine your image over multiple turns, making small adjustments until it's perfect.
+- **High-Fidelity text rendering:** Accurately generate images that contain legible and well-placed text, ideal for logos, diagrams, and posters.
 
 All generated images include a SynthID watermark.
 
 This guide describes both the fast Gemini 2.5 Flash and the advanced Gemini 3 Pro Preview image models, with examples of capabilities from basic text-to-image to complex, multi-turn refinements, 4K output, and search-grounded generation.
 
-Model selection
----------------
+## Model selection
 
 Choose the model best suited for your specific use case.
 
-*   **Gemini 3 Pro Image Preview (Nano Banana Pro Preview)** is designed for professional asset production and complex instructions. This model features real-world grounding using Google Search, a default "Thinking" process that refines composition prior to generation, and can generate images of up to 4K resolutions.
-    
-*   **Gemini 2.5 Flash Image (Nano Banana)** is designed for speed and efficiency. This model is optimized for high-volume, low-latency tasks and generates images at 1024px resolution.
-    
+- **Gemini 3 Pro Image Preview (Nano Banana Pro Preview)** is designed for professional asset production and complex instructions. This model features real-world grounding using Google Search, a default "Thinking" process that refines composition prior to generation, and can generate images of up to 4K resolutions.
+- **Gemini 2.5 Flash Image (Nano Banana)** is designed for speed and efficiency. This model is optimized for high-volume, low-latency tasks and generates images at 1024px resolution.
 
-Image generation (text-to-image)
---------------------------------
+## Image generation (text-to-image)
 
 The following code demonstrates how to generate an image based on a descriptive prompt.
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-prompt = (
-    "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme"
-)
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents=[prompt],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("generated_image.png")
-
-```
-
 
 ### JavaScript
 
@@ -88,91 +56,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-  "context"
-  "fmt"
-  "log"
-  "os"
-  "google.golang.org/genai"
-)
-
-func main() {
-
-  ctx := context.Background()
-  client, err := genai.NewClient(ctx, nil)
-  if err != nil {
-      log.Fatal(err)
-  }
-
-  result, _ := client.Models.GenerateContent(
-      ctx,
-      "gemini-2.5-flash-image",
-      genai.Text("Create a picture of a nano banana dish in a " +
-                 " fancy restaurant with a Gemini theme"),
-  )
-
-  for _, part := range result.Candidates[0].Content.Parts {
-      if part.Text != "" {
-          fmt.Println(part.Text)
-      } else if part.InlineData != nil {
-          imageBytes := part.InlineData.Data
-          outputFilename := "gemini_generated_image.png"
-          _ = os.WriteFile(outputFilename, imageBytes, 0644)
-      }
-  }
-}
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-public class TextToImage {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme",
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("_01_generated_image.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -193,48 +76,15 @@ curl -s -X POST \
 
 ```
 
-
 !AI-generated image of a nano banana dish
 
 AI-generated image of a nano banana dish in a Gemini-themed restaurant
 
-Image editing (text-and-image-to-image)
----------------------------------------
+## Image editing (text-and-image-to-image)
 
 **Reminder**: Make sure you have the necessary rights to any images you upload. Don't generate content that infringe on others' rights, including videos or images that deceive, harass, or harm. Your use of this generative AI service is subject to our Prohibited Use Policy.
 
 The following example demonstrates uploading base64 encoded images. For multiple images, larger payloads, and supported MIME types, check the Image understanding page.
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-prompt = (
-    "Create a picture of my cat eating a nano-banana in a "
-    "fancy restaurant under the Gemini constellation",
-)
-
-image = Image.open("/path/to/cat_image.png")
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents=[prompt, image],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("generated_image.png")
-
-```
-
 
 ### JavaScript
 
@@ -281,117 +131,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
- "context"
- "fmt"
- "log"
- "os"
- "google.golang.org/genai"
-)
-
-func main() {
-
- ctx := context.Background()
- client, err := genai.NewClient(ctx, nil)
- if err != nil {
-     log.Fatal(err)
- }
-
- imagePath := "/path/to/cat_image.png"
- imgData, _ := os.ReadFile(imagePath)
-
- parts := []*genai.Part{
-   genai.NewPartFromText("Create a picture of my cat eating a nano-banana in a fancy restaurant under the Gemini constellation"),
-   &genai.Part{
-     InlineData: &genai.Blob{
-       MIMEType: "image/png",
-       Data:     imgData,
-     },
-   },
- }
-
- contents := []*genai.Content{
-   genai.NewContentFromParts(parts, genai.RoleUser),
- }
-
- result, _ := client.Models.GenerateContent(
-     ctx,
-     "gemini-2.5-flash-image",
-     contents,
- )
-
- for _, part := range result.Candidates[0].Content.Parts {
-     if part.Text != "" {
-         fmt.Println(part.Text)
-     } else if part.InlineData != nil {
-         imageBytes := part.InlineData.Data
-         outputFilename := "gemini_generated_image.png"
-         _ = os.WriteFile(outputFilename, imageBytes, 0644)
-     }
- }
-}
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class TextAndImageToImage {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          Content.fromParts(
-              Part.fromText("""
-                  Create a picture of my cat eating a nano-banana in
-                  a fancy restaurant under the Gemini constellation
-                  """),
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("src/main/resources/cat.jpg")),
-                  "image/jpeg")),
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("gemini_generated_image.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -428,7 +167,6 @@ curl -X POST \
 
 ```
 
-
 !AI-generated image of a cat eating anano banana
 
 AI-generated image of a cat eating a nano banana
@@ -436,35 +174,6 @@ AI-generated image of a cat eating a nano banana
 ### Multi-turn image editing
 
 Keep generating and editing images conversationally. Chat or multi-turn conversation is the recommended way to iterate on images. The following example shows a prompt to generate an infographic about photosynthesis.
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-
-client = genai.Client()
-
-chat = client.chats.create(
-    model="gemini-3-pro-image-preview",
-    config=types.GenerateContentConfig(
-        response_modalities=['TEXT', 'IMAGE'],
-        tools=[{"google_search": {}}]
-    )
-)
-
-message = "Create a vibrant infographic that explains photosynthesis as if it were a recipe for a plant's favorite food. Show the \"ingredients\" (sunlight, water, CO2) and the \"finished dish\" (sugar/energy). The style should be like a page from a colorful kids' cookbook, suitable for a 4th grader."
-
-response = chat.send_message(message)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif image:= part.as_image():
-        image.save("photosynthesis.png")
-
-```
-
 
 ### Javascript
 
@@ -501,118 +210,6 @@ for (const part of response.candidates[0].content.parts) {
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-
-    "google.golang.org/genai"
-)
-
-func main() {
-    ctx := context.Background()
-    client, err := genai.NewClient(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
-
-    model := client.GenerativeModel("gemini-3-pro-image-preview")
-    model.GenerationConfig = &pb.GenerationConfig{
-        ResponseModalities: []pb.ResponseModality{genai.Text, genai.Image},
-    }
-    chat := model.StartChat()
-
-    message := "Create a vibrant infographic that explains photosynthesis as if it were a recipe for a plant's favorite food. Show the \"ingredients\" (sunlight, water, CO2) and the \"finished dish\" (sugar/energy). The style should be like a page from a colorful kids' cookbook, suitable for a 4th grader."
-
-    resp, err := chat.SendMessage(ctx, genai.Text(message))
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    for _, part := range resp.Candidates[0].Content.Parts {
-        if txt, ok := part.(genai.Text); ok {
-            fmt.Printf("%s", string(txt))
-        } else if img, ok := part.(genai.ImageData); ok {
-            err := os.WriteFile("photosynthesis.png", img.Data, 0644)
-            if err != nil {
-                log.Fatal(err)
-            }
-        }
-    }
-}
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Chat;
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.GoogleSearch;
-import com.google.genai.types.ImageConfig;
-import com.google.genai.types.Part;
-import com.google.genai.types.RetrievalConfig;
-import com.google.genai.types.Tool;
-import com.google.genai.types.ToolConfig;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class MultiturnImageEditing {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .tools(Tool.builder()
-              .googleSearch(GoogleSearch.builder().build())
-              .build())
-          .build();
-
-      Chat chat = client.chats.create("gemini-3-pro-image-preview", config);
-
-      GenerateContentResponse response = chat.sendMessage("""
-          Create a vibrant infographic that explains photosynthesis
-          as if it were a recipe for a plant's favorite food.
-          Show the "ingredients" (sunlight, water, CO2)
-          and the "finished dish" (sugar/energy).
-          The style should be like a page from a colorful
-          kids' cookbook, suitable for a 4th grader.
-          """);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("photosynthesis.png"), blob.data().get());
-          }
-        }
-      }
-      // ...
-    }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -638,36 +235,11 @@ jq -r '.candidates[0].content.parts[] | select(.inlineData) | .inlineData.data' 
 
 ```
 
-
 !AI-generated infographic about photosynthesis
 
 AI-generated infographic about photosynthesis
 
 You can then use the same chat to change the language on the graphic to Spanish.
-
-### Python
-
-```
-message = "Update this infographic to be in Spanish. Do not change any other elements of the image."
-aspect_ratio = "16:9" # "1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9"
-resolution = "2K" # "1K", "2K", "4K"
-
-response = chat.send_message(message,
-    config=types.GenerateContentConfig(
-        image_config=types.ImageConfig(
-            aspect_ratio=aspect_ratio,
-            image_size=resolution
-        ),
-    ))
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif image:= part.as_image():
-        image.save("photosynthesis_spanish.png")
-
-```
-
 
 ### Javascript
 
@@ -701,71 +273,6 @@ for (const part of response.candidates[0].content.parts) {
 
 ```
 
-
-### Go
-
-```
-message = "Update this infographic to be in Spanish. Do not change any other elements of the image."
-aspect_ratio = "16:9" // "1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9"
-resolution = "2K"     // "1K", "2K", "4K"
-
-model.GenerationConfig.ImageConfig = &pb.ImageConfig{
-    AspectRatio: aspect_ratio,
-    ImageSize:   resolution,
-}
-
-resp, err = chat.SendMessage(ctx, genai.Text(message))
-if err != nil {
-    log.Fatal(err)
-}
-
-for _, part := range resp.Candidates[0].Content.Parts {
-    if txt, ok := part.(genai.Text); ok {
-        fmt.Printf("%s", string(txt))
-    } else if img, ok := part.(genai.ImageData); ok {
-        err := os.WriteFile("photosynthesis_spanish.png", img.Data, 0644)
-        if err != nil {
-            log.Fatal(err)
-        }
-    }
-}
-
-```
-
-
-### Java
-
-```
-String aspectRatio = "16:9"; // "1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9"
-String resolution = "2K"; // "1K", "2K", "4K"
-
-config = GenerateContentConfig.builder()
-    .responseModalities("TEXT", "IMAGE")
-    .imageConfig(ImageConfig.builder()
-        .aspectRatio(aspectRatio)
-        .imageSize(resolution)
-        .build())
-    .build();
-
-response = chat.sendMessage(
-    "Update this infographic to be in Spanish. " + 
-    "Do not change any other elements of the image.",
-    config);
-
-for (Part part : response.parts()) {
-  if (part.text().isPresent()) {
-    System.out.println(part.text().get());
-  } else if (part.inlineData().isPresent()) {
-    var blob = part.inlineData().get();
-    if (blob.data().isPresent()) {
-      Files.write(Paths.get("photosynthesis_spanish.png"), blob.data().get());
-    }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -797,70 +304,26 @@ jq -r '.candidates[0].content.parts[] | select(.inlineData) | .inlineData.data' 
 
 ```
 
-
 !AI-generated infographic of photosynthesis in Spanish
 
 AI-generated infographic of photosynthesis in Spanish
 
-New with Gemini 3 Pro Image
----------------------------
+## New with Gemini 3 Pro Image
 
 Gemini 3 Pro Image (`gemini-3-pro-image-preview`) is a state-of-the-art image generation and editing model optimized for professional asset production. Designed to tackle the most challenging workflows through advanced reasoning, it excels at complex, multi-turn creation and modification tasks.
 
-*   **High-resolution output**: Built-in generation capabilities for 1K, 2K, and 4K visuals.
-*   **Advanced text rendering**: Capable of generating legible, stylized text for infographics, menus, diagrams, and marketing assets.
-*   **Grounding with Google Search**: The model can use Google Search as a tool to verify facts and generate imagery based on real-time data (e.g., current weather maps, stock charts, recent events).
-*   **Thinking mode**: The model utilizes a "thinking" process to reason through complex prompts. It generates interim "thought images" (visible in the backend but not charged) to refine the composition before producing the final high-quality output.
-*   **Up to 14 reference images**: You can now mix up to 14 reference images to produce the final image.
+- **High-resolution output**: Built-in generation capabilities for 1K, 2K, and 4K visuals.
+- **Advanced text rendering**: Capable of generating legible, stylized text for infographics, menus, diagrams, and marketing assets.
+- **Grounding with Google Search**: The model can use Google Search as a tool to verify facts and generate imagery based on real-time data (e.g., current weather maps, stock charts, recent events).
+- **Thinking mode**: The model utilizes a "thinking" process to reason through complex prompts. It generates interim "thought images" (visible in the backend but not charged) to refine the composition before producing the final high-quality output.
+- **Up to 14 reference images**: You can now mix up to 14 reference images to produce the final image.
 
 ### Use up to 14 reference images
 
 Gemini 3 Pro Preview lets you to mix up to 14 reference images. These 14 images can include the following:
 
-*   Up to 6 images of objects with high-fidelity to include in the final image
-*   Up to 5 images of humans to maintain character consistency
-    
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-prompt = "An office group photo of these people, they are making funny faces."
-aspect_ratio = "5:4" # "1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9"
-resolution = "2K" # "1K", "2K", "4K"
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-3-pro-image-preview",
-    contents=[
-        prompt,
-        Image.open('person1.png'),
-        Image.open('person2.png'),
-        Image.open('person3.png'),
-        Image.open('person4.png'),
-        Image.open('person5.png'),
-    ],
-    config=types.GenerateContentConfig(
-        response_modalities=['TEXT', 'IMAGE'],
-        image_config=types.ImageConfig(
-            aspect_ratio=aspect_ratio,
-            image_size=resolution
-        ),
-    )
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif image:= part.as_image():
-        image.save("office.png")
-
-```
-
+- Up to 6 images of objects with high-fidelity to include in the final image
+- Up to 5 images of humans to maintain character consistency
 
 ### Javascript
 
@@ -940,133 +403,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-
-    "google.golang.org/genai"
-)
-
-func main() {
-    ctx := context.Background()
-    client, err := genai.NewClient(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
-
-    model := client.GenerativeModel("gemini-3-pro-image-preview")
-    model.GenerationConfig = &pb.GenerationConfig{
-        ResponseModalities: []pb.ResponseModality{genai.Text, genai.Image},
-        ImageConfig: &pb.ImageConfig{
-            AspectRatio: "5:4",
-            ImageSize:   "2K",
-        },
-    }
-
-    img1, err := os.ReadFile("person1.png")
-    if err != nil { log.Fatal(err) }
-    img2, err := os.ReadFile("person2.png")
-    if err != nil { log.Fatal(err) }
-    img3, err := os.ReadFile("person3.png")
-    if err != nil { log.Fatal(err) }
-    img4, err := os.ReadFile("person4.png")
-    if err != nil { log.Fatal(err) }
-    img5, err := os.ReadFile("person5.png")
-    if err != nil { log.Fatal(err) }
-
-    parts := []genai.Part{
-        genai.Text("An office group photo of these people, they are making funny faces."),
-        genai.ImageData{MIMEType: "image/png", Data: img1},
-        genai.ImageData{MIMEType: "image/png", Data: img2},
-        genai.ImageData{MIMEType: "image/png", Data: img3},
-        genai.ImageData{MIMEType: "image/png", Data: img4},
-        genai.ImageData{MIMEType: "image/png", Data: img5},
-    }
-
-    resp, err := model.GenerateContent(ctx, parts...)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    for _, part := range resp.Candidates[0].Content.Parts {
-        if txt, ok := part.(genai.Text); ok {
-            fmt.Printf("%s", string(txt))
-        } else if img, ok := part.(genai.ImageData); ok {
-            err := os.WriteFile("office.png", img.Data, 0644)
-            if err != nil {
-                log.Fatal(err)
-            }
-        }
-    }
-}
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.ImageConfig;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class GroupPhoto {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .imageConfig(ImageConfig.builder()
-              .aspectRatio("5:4")
-              .imageSize("2K")
-              .build())
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-3-pro-image-preview",
-          Content.fromParts(
-              Part.fromText("An office group photo of these people, they are making funny faces."),
-              Part.fromBytes(Files.readAllBytes(Path.of("person1.png")), "image/png"),
-              Part.fromBytes(Files.readAllBytes(Path.of("person2.png")), "image/png"),
-              Part.fromBytes(Files.readAllBytes(Path.of("person3.png")), "image/png"),
-              Part.fromBytes(Files.readAllBytes(Path.of("person4.png")), "image/png"),
-              Part.fromBytes(Files.readAllBytes(Path.of("person5.png")), "image/png")
-          ), config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("office.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -1114,7 +450,6 @@ curl -X POST \
 
 ```
 
-
 !AI-generated office group photo
 
 AI-generated office group photo
@@ -1125,39 +460,8 @@ Use the Google Search tool to generate images based on real-time information, su
 
 Notes to consider when using Grounding with Google Search with image generation:
 
-*   Image-based search results are not passed to the generation model and are excluded from the response.
-*   Image only mode (`responseModalities = ["IMAGE"]`) won't return an image output when used with Grounding with Google Search.
-    
-
-### Python
-
-```
-from google import genai
-prompt = "Visualize the current weather forecast for the next 5 days in San Francisco as a clean, modern weather chart. Add a visual on what I should wear each day"
-aspect_ratio = "16:9" # "1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9"
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-3-pro-image-preview",
-    contents=prompt,
-    config=types.GenerateContentConfig(
-        response_modalities=['Text', 'Image'],
-        image_config=types.ImageConfig(
-            aspect_ratio=aspect_ratio,
-        ),
-        tools=[{"google_search": {}}]
-    )
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif image:= part.as_image():
-        image.save("weather.png")
-
-```
-
+- Image-based search results are not passed to the generation model and are excluded from the response.
+- Image only mode (`responseModalities = ["IMAGE"]`) won't return an image output when used with Grounding with Google Search.
 
 ### Javascript
 
@@ -1203,61 +507,6 @@ main();
 
 ```
 
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.GoogleSearch;
-import com.google.genai.types.ImageConfig;
-import com.google.genai.types.Part;
-import com.google.genai.types.Tool;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-public class SearchGrounding {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .imageConfig(ImageConfig.builder()
-              .aspectRatio("16:9")
-              .build())
-          .tools(Tool.builder()
-              .googleSearch(GoogleSearch.builder().build())
-              .build())
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-3-pro-image-preview", """
-              Visualize the current weather forecast for the next 5 days 
-              in San Francisco as a clean, modern weather chart. 
-              Add a visual on what I should wear each day
-              """,
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("weather.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -1276,54 +525,20 @@ curl -s -X POST \
 
 ```
 
-
 !AI-generated five day weather chart for San Francisco
 
 AI-generated five day weather chart for San Francisco
 
 The response includes `groundingMetadata` which contains the following required fields:
 
-*   **`searchEntryPoint`**: Contains the HTML and CSS to render the required search suggestions.
-*   **`groundingChunks`**: Returns the top 3 web sources used to ground the generated image
+- **`searchEntryPoint`**: Contains the HTML and CSS to render the required search suggestions.
+- **`groundingChunks`**: Returns the top 3 web sources used to ground the generated image
 
 ### Generate images up to 4K resolution
 
 Gemini 3 Pro Image generates 1K images by default but can also output 2K and 4K images. To generate higher resolution assets, specify the `image_size` in the `generation_config`.
 
 You must use an uppercase 'K' (e.g., 1K, 2K, 4K). Lowercase parameters (e.g., 1k) will be rejected.
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-
-prompt = "Da Vinci style anatomical sketch of a dissected Monarch butterfly. Detailed drawings of the head, wings, and legs on textured parchment with notes in English." 
-aspect_ratio = "1:1" # "1:1","2:3","3:2","3:4","4:3","4:5","5:4","9:16","16:9","21:9"
-resolution = "1K" # "1K", "2K", "4K"
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-3-pro-image-preview",
-    contents=prompt,
-    config=types.GenerateContentConfig(
-        response_modalities=['TEXT', 'IMAGE'],
-        image_config=types.ImageConfig(
-            aspect_ratio=aspect_ratio,
-            image_size=resolution
-        ),
-    )
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif image:= part.as_image():
-        image.save("butterfly.png")
-
-```
-
 
 ### Javascript
 
@@ -1369,111 +584,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-
-    "google.golang.org/genai"
-)
-
-func main() {
-    ctx := context.Background()
-    client, err := genai.NewClient(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Close()
-
-    model := client.GenerativeModel("gemini-3-pro-image-preview")
-    model.GenerationConfig = &pb.GenerationConfig{
-        ResponseModalities: []pb.ResponseModality{genai.Text, genai.Image},
-        ImageConfig: &pb.ImageConfig{
-            AspectRatio: "1:1",
-            ImageSize:   "1K",
-        },
-    }
-
-    prompt := "Da Vinci style anatomical sketch of a dissected Monarch butterfly. Detailed drawings of the head, wings, and legs on textured parchment with notes in English."
-    resp, err := model.GenerateContent(ctx, genai.Text(prompt))
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    for _, part := range resp.Candidates[0].Content.Parts {
-        if txt, ok := part.(genai.Text); ok {
-            fmt.Printf("%s", string(txt))
-        } else if img, ok := part.(genai.ImageData); ok {
-            err := os.WriteFile("butterfly.png", img.Data, 0644)
-            if err != nil {
-                log.Fatal(err)
-            }
-        }
-    }
-}
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.GoogleSearch;
-import com.google.genai.types.ImageConfig;
-import com.google.genai.types.Part;
-import com.google.genai.types.Tool;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-public class HiRes {
-    public static void main(String[] args) throws IOException {
-
-      try (Client client = new Client()) {
-        GenerateContentConfig config = GenerateContentConfig.builder()
-            .responseModalities("TEXT", "IMAGE")
-            .imageConfig(ImageConfig.builder()
-                .aspectRatio("16:9")
-                .imageSize("4K")
-                .build())
-            .build();
-
-        GenerateContentResponse response = client.models.generateContent(
-            "gemini-3-pro-image-preview", """
-              Da Vinci style anatomical sketch of a dissected Monarch butterfly.
-              Detailed drawings of the head, wings, and legs on textured
-              parchment with notes in English.
-              """,
-            config);
-
-        for (Part part : response.parts()) {
-          if (part.text().isPresent()) {
-            System.out.println(part.text().get());
-          } else if (part.inlineData().isPresent()) {
-            var blob = part.inlineData().get();
-            if (blob.data().isPresent()) {
-              Files.write(Paths.get("butterfly.png"), blob.data().get());
-            }
-          }
-        }
-      }
-    }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -1492,7 +602,6 @@ curl -s -X POST \
 
 ```
 
-
 The following is an example image generated from this prompt:
 
 !AI-generated Da Vinci style anatomical sketch of a dissected Monarch butterfly.
@@ -1506,19 +615,6 @@ The Gemini 3 Pro Image Preview model is a thinking model and uses a reasoning pr
 The model generates up to two interim images to test composition and logic. The last image within Thinking is also the final rendered image.
 
 You can check the thoughts that lead to the final image being produced.
-
-### Python
-
-```
-for part in response.parts:
-    if part.thought:
-        if part.text:
-            print(part.text)
-        elif image:= part.as_image():
-            image.show()
-
-```
-
 
 ### Javascript
 
@@ -1538,16 +634,15 @@ for (const part of response.candidates[0].content.parts) {
 
 ```
 
-
 #### Thought Signatures
 
 Thought signatures are encrypted representations of the model's internal thought process and are used to preserve reasoning context across multi-turn interactions. All responses include a `thought_signature` field. As a general rule, if you receive a thought signature in a model response, you should pass it back exactly as received when sending the conversation history in the next turn. Failure to circulate thought signatures may cause the response to fail. Check the thought signature documentation for more explanations of signatures overall.
 
 Here is how thought signatures work:
 
-*   All `inline_data` parts with image `mimetype` which are part of the response should have signature.
-*   If there are some text parts at the beginning (before any image) right after the thoughts, the first text part should also have a signature.
-*   Thoughts do not have signatures; If `inline_data` parts with image `mimetype` are part of thoughts, they will not have signatures.
+- All `inline_data` parts with image `mimetype` which are part of the response should have signature.
+- If there are some text parts at the beginning (before any image) right after the thoughts, the first text part should also have a signature.
+- Thoughts do not have signatures; If `inline_data` parts with image `mimetype` are part of thoughts, they will not have signatures.
 
 The following code shows an example of where thought signatures are included:
 
@@ -1610,106 +705,20 @@ The following code shows an example of where thought signatures are included:
 
 ```
 
-
-Other image generation modes
-----------------------------
+## Other image generation modes
 
 Gemini supports other image interaction modes based on prompt structure and context, including:
 
-*   **Text to image(s) and text (interleaved):** Outputs images with related text.
-    *   Example prompt: "Generate an illustrated recipe for a paella."
-*   **Image(s) and text to image(s) and text (interleaved)**: Uses input images and text to create new related images and text.
-    *   Example prompt: (With an image of a furnished room) "What other color sofas would work in my space? can you update the image?"
+- **Text to image(s) and text (interleaved):** Outputs images with related text.
+  - Example prompt: "Generate an illustrated recipe for a paella."
+- **Image(s) and text to image(s) and text (interleaved)**: Uses input images and text to create new related images and text.
+  - Example prompt: (With an image of a furnished room) "What other color sofas would work in my space? can you update the image?"
 
-Generate images in batch
-------------------------
+## Generate images in batch
 
 If you need to generate a lot of images, you can use the batch API. You get higher rate limits in exchange for a turnaround of up to 24 hours.
 
 You can either use inline requests for small batches of requests (under 20MB) or a JSONL input file for large batches (recommended for image generation):
-
-### Python
-
-```
-import json
-import time
-import base64
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-# 1. Create and upload file
-file_name = "my-batch-image-requests.jsonl"
-with open(file_name, "w") as f:
-    requests = [
-        {"key": "request-1", "request": {"contents": [{"parts": [{"text": "A big letter A surrounded by animals starting with the A letter"}]}], "generation_config": {"responseModalities": ["TEXT", "IMAGE"]}}},
-        {"key": "request-2", "request": {"contents": [{"parts": [{"text": "A big letter B surrounded by animals starting with the B letter"}]}], "generation_config": {"responseModalities": ["TEXT", "IMAGE"]}}}
-    ]
-    for req in requests:
-        f.write(json.dumps(req) + "\n")
-
-uploaded_file = client.files.upload(
-    file=file_name,
-    config=types.UploadFileConfig(display_name='my-batch-image-requests', mime_type='jsonl')
-)
-print(f"Uploaded file: {uploaded_file.name}")
-
-# 2. Create batch job
-file_batch_job = client.batches.create(
-    model="gemini-2.5-flash-image",
-    src=uploaded_file.name,
-    config={
-        'display_name': "file-image-upload-job-1",
-    },
-)
-print(f"Created batch job: {file_batch_job.name}")
-
-# 3. Monitor job status
-job_name = file_batch_job.name
-print(f"Polling status for job: {job_name}")
-
-completed_states = set([
-    'JOB_STATE_SUCCEEDED',
-    'JOB_STATE_FAILED',
-    'JOB_STATE_CANCELLED',
-    'JOB_STATE_EXPIRED',
-])
-
-batch_job = client.batches.get(name=job_name) # Initial get
-while batch_job.state.name not in completed_states:
-  print(f"Current state: {batch_job.state.name}")
-  time.sleep(10) # Wait for 10 seconds before polling again
-  batch_job = client.batches.get(name=job_name)
-
-print(f"Job finished with state: {batch_job.state.name}")
-
-# 4. Retrieve results
-if batch_job.state.name == 'JOB_STATE_SUCCEEDED':
-    result_file_name = batch_job.dest.file_name
-    print(f"Results are in file: {result_file_name}")
-    print("Downloading result file content...")
-    file_content_bytes = client.files.download(file=result_file_name)
-    file_content = file_content_bytes.decode('utf-8')
-    # The result file is also a JSONL file. Parse and print each line.
-    for line in file_content.splitlines():
-      if line:
-        parsed_response = json.loads(line)
-        if 'response' in parsed_response and parsed_response['response']:
-            for part in parsed_response['response']['candidates'][0]['content']['parts']:
-              if part.get('text'):
-                print(part['text'])
-              elif part.get('inlineData'):
-                print(f"Image mime type: {part['inlineData']['mimeType']}")
-                data = base64.b64decode(part['inlineData']['data'])
-        elif 'error' in parsed_response:
-            print(f"Error: {parsed_response['error']}")
-elif batch_job.state.name == 'JOB_STATE_FAILED':
-    print(f"Error: {batch_job.error}")
-
-```
-
 
 ### JavaScript
 
@@ -1816,7 +825,6 @@ run();
 
 ```
 
-
 ### REST
 
 ```
@@ -1864,11 +872,9 @@ fi
 
 ```
 
-
 Check the documentation and the cookbook for more details on the batch API.
 
-Prompting guide and strategies
-------------------------------
+## Prompting guide and strategies
 
 Mastering image generation starts with one fundamental principle:
 
@@ -1892,7 +898,6 @@ a [mood] atmosphere. Captured with a [camera/lens details], emphasizing
 
 ```
 
-
 ### Prompt
 
 ```
@@ -1906,82 +911,6 @@ Captured with an 85mm portrait lens, resulting in a soft, blurred background
 orientation.
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types    
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents="A photorealistic close-up portrait of an elderly Japanese ceramicist with deep, sun-etched wrinkles and a warm, knowing smile. He is carefully inspecting a freshly glazed tea bowl. The setting is his rustic, sun-drenched workshop with pottery wheels and shelves of clay pots in the background. The scene is illuminated by soft, golden hour light streaming through a window, highlighting the fine texture of the clay and the fabric of his apron. Captured with an 85mm portrait lens, resulting in a soft, blurred background (bokeh). The overall mood is serene and masterful.",
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("photorealistic_example.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-public class PhotorealisticScene {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          """
-          A photorealistic close-up portrait of an elderly Japanese ceramicist
-          with deep, sun-etched wrinkles and a warm, knowing smile. He is
-          carefully inspecting a freshly glazed tea bowl. The setting is his
-          rustic, sun-drenched workshop with pottery wheels and shelves of
-          clay pots in the background. The scene is illuminated by soft,
-          golden hour light streaming through a window, highlighting the
-          fine texture of the clay and the fabric of his apron. Captured
-          with an 85mm portrait lens, resulting in a soft, blurred
-          background (bokeh). The overall mood is serene and masterful.
-          """,
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("photorealistic_example.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -2016,48 +945,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    "google.golang.org/genai"
-)
-
-func main() {
-
-    ctx := context.Background()
-    client, err := genai.NewClient(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    result, _ := client.Models.GenerateContent(
-        ctx,
-        "gemini-2.5-flash-image",
-        genai.Text("A photorealistic close-up portrait of an elderly Japanese ceramicist with deep, sun-etched wrinkles and a warm, knowing smile. He is carefully inspecting a freshly glazed tea bowl. The setting is his rustic, sun-drenched workshop with pottery wheels and shelves of clay pots in the background. The scene is illuminated by soft, golden hour light streaming through a window, highlighting the fine texture of the clay and the fabric of his apron. Captured with an 85mm portrait lens, resulting in a soft, blurred background (bokeh). The overall mood is serene and masterful."),
-    )
-
-    for _, part := range result.Candidates[0].Content.Parts {
-        if part.Text != "" {
-            fmt.Println(part.Text)
-        } else if part.InlineData != nil {
-            imageBytes := part.InlineData.Data
-            outputFilename := "photorealistic_example.png"
-            _ = os.WriteFile(outputFilename, imageBytes, 0644)
-        }
-    }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -2078,7 +965,6 @@ curl -s -X POST
 
 ```
 
-
 !A photorealistic close-up portrait of an elderly Japanese ceramicist...
 
 A photorealistic close-up portrait of an elderly Japanese ceramicist...
@@ -2096,7 +982,6 @@ The background must be transparent.
 
 ```
 
-
 ### Prompt
 
 ```
@@ -2105,77 +990,6 @@ munching on a green bamboo leaf. The design features bold, clean outlines,
 simple cel-shading, and a vibrant color palette. The background must be white.
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents="A kawaii-style sticker of a happy red panda wearing a tiny bamboo hat. It's munching on a green bamboo leaf. The design features bold, clean outlines, simple cel-shading, and a vibrant color palette. The background must be white.",
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("red_panda_sticker.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-public class StylizedIllustration {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          """
-          A kawaii-style sticker of a happy red panda wearing a tiny bamboo
-          hat. It's munching on a green bamboo leaf. The design features
-          bold, clean outlines, simple cel-shading, and a vibrant color
-          palette. The background must be white.
-          """,
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("red_panda_sticker.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -2210,48 +1024,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    "google.golang.org/genai"
-)
-
-func main() {
-
-    ctx := context.Background()
-    client, err := genai.NewClient(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    result, _ := client.Models.GenerateContent(
-        ctx,
-        "gemini-2.5-flash-image",
-        genai.Text("A kawaii-style sticker of a happy red panda wearing a tiny bamboo hat. It's munching on a green bamboo leaf. The design features bold, clean outlines, simple cel-shading, and a vibrant color palette. The background must be white."),
-    )
-
-    for _, part := range result.Candidates[0].Content.Parts {
-        if part.Text != "" {
-            fmt.Println(part.Text)
-        } else if part.InlineData != nil {
-            imageBytes := part.InlineData.Data
-            outputFilename := "red_panda_sticker.png"
-            _ = os.WriteFile(outputFilename, imageBytes, 0644)
-        }
-    }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -2272,7 +1044,6 @@ curl -s -X POST
 
 ```
 
-
 !A kawaii-style sticker of a happy red...
 
 A kawaii-style sticker of a happy red panda...
@@ -2290,90 +1061,12 @@ in a [font style]. The design should be [style description], with a
 
 ```
 
-
 ### Prompt
 
 ```
 Create a modern, minimalist logo for a coffee shop called 'The Daily Grind'. The text should be in a clean, bold, sans-serif font. The color scheme is black and white. Put the logo in a circle. Use a coffee bean in a clever way.
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types    
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-3-pro-image-preview",
-    contents="Create a modern, minimalist logo for a coffee shop called 'The Daily Grind'. The text should be in a clean, bold, sans-serif font. The color scheme is black and white. Put the logo in a circle. Use a coffee bean in a clever way.",
-    config=types.GenerateContentConfig(
-        image_config=types.ImageConfig(
-            aspect_ratio="1:1",
-        )
-    )
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("logo_example.jpg")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-import com.google.genai.types.ImageConfig;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-public class AccurateTextInImages {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .imageConfig(ImageConfig.builder()
-              .aspectRatio("1:1")
-              .build())
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-3-pro-image-preview",
-          """
-          Create a modern, minimalist logo for a coffee shop called 'The Daily Grind'. The text should be in a clean, bold, sans-serif font. The color scheme is black and white. Put the logo in a circle. Use a coffee bean in a clever way.
-          """,
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("logo_example.jpg"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -2413,53 +1106,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    "google.golang.org/genai"
-)
-
-func main() {
-
-    ctx := context.Background()
-    client, err := genai.NewClient(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    result, _ := client.Models.GenerateContent(
-        ctx,
-        "gemini-3-pro-image-preview",
-        genai.Text("Create a modern, minimalist logo for a coffee shop called 'The Daily Grind'. The text should be in a clean, bold, sans-serif font. The color scheme is black and white. Put the logo in a circle. Use a coffee bean in a clever way."),
-        &genai.GenerateContentConfig{
-            ImageConfig: &genai.ImageConfig{
-              AspectRatio: "1:1",
-            },
-        },
-    )
-
-    for _, part := range result.Candidates[0].Content.Parts {
-        if part.Text != "" {
-            fmt.Println(part.Text)
-        } else if part.InlineData != nil {
-            imageBytes := part.InlineData.Data
-            outputFilename := "logo_example.jpg"
-            _ = os.WriteFile(outputFilename, imageBytes, 0644)
-        }
-    }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -2485,7 +1131,6 @@ curl -s -X POST
 
 ```
 
-
 !Create a modern, minimalist logo for a coffee shop called 'The Daily Grind'...
 
 Create a modern, minimalist logo for a coffee shop called 'The Daily Grind'...
@@ -2505,7 +1150,6 @@ focus on [key detail]. [Aspect ratio].
 
 ```
 
-
 ### Prompt
 
 ```
@@ -2517,80 +1161,6 @@ elevated 45-degree shot to showcase its clean lines. Ultra-realistic, with
 sharp focus on the steam rising from the coffee. Square image.
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents="A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black, presented on a polished concrete surface. The lighting is a three-point softbox setup designed to create soft, diffused highlights and eliminate harsh shadows. The camera angle is a slightly elevated 45-degree shot to showcase its clean lines. Ultra-realistic, with sharp focus on the steam rising from the coffee. Square image.",
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("product_mockup.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-public class ProductMockup {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          """
-          A high-resolution, studio-lit product photograph of a minimalist
-          ceramic coffee mug in matte black, presented on a polished
-          concrete surface. The lighting is a three-point softbox setup
-          designed to create soft, diffused highlights and eliminate harsh
-          shadows. The camera angle is a slightly elevated 45-degree shot
-          to showcase its clean lines. Ultra-realistic, with sharp focus
-          on the steam rising from the coffee. Square image.
-          """,
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("product_mockup.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -2625,48 +1195,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    "google.golang.org/genai"
-)
-
-func main() {
-
-    ctx := context.Background()
-    client, err := genai.NewClient(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    result, _ := client.Models.GenerateContent(
-        ctx,
-        "gemini-2.5-flash-image",
-        genai.Text("A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black, presented on a polished concrete surface. The lighting is a three-point softbox setup designed to create soft, diffused highlights and eliminate harsh shadows. The camera angle is a slightly elevated 45-degree shot to showcase its clean lines. Ultra-realistic, with sharp focus on the steam rising from the coffee. Square image."),
-    )
-
-    for _, part := range result.Candidates[0].Content.Parts {
-        if part.Text != "" {
-            fmt.Println(part.Text)
-        } else if part.InlineData != nil {
-            imageBytes := part.InlineData.Data
-            outputFilename := "product_mockup.png"
-            _ = os.WriteFile(outputFilename, imageBytes, 0644)
-        }
-    }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -2687,7 +1215,6 @@ curl -s -X POST
 
 ```
 
-
 !A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug...
 
 A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug...
@@ -2706,7 +1233,6 @@ A minimalist composition featuring a single [subject] positioned in the
 
 ```
 
-
 ### Prompt
 
 ```
@@ -2716,78 +1242,6 @@ off-white canvas, creating significant negative space for text. Soft,
 diffused lighting from the top left. Square image.
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types    
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents="A minimalist composition featuring a single, delicate red maple leaf positioned in the bottom-right of the frame. The background is a vast, empty off-white canvas, creating significant negative space for text. Soft, diffused lighting from the top left. Square image.",
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("minimalist_design.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-public class MinimalistDesign {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          """
-          A minimalist composition featuring a single, delicate red maple
-          leaf positioned in the bottom-right of the frame. The background
-          is a vast, empty off-white canvas, creating significant negative
-          space for text. Soft, diffused lighting from the top left.
-          Square image.
-          """,
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("minimalist_design.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -2822,48 +1276,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    "google.golang.org/genai"
-)
-
-func main() {
-
-    ctx := context.Background()
-    client, err := genai.NewClient(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    result, _ := client.Models.GenerateContent(
-        ctx,
-        "gemini-2.5-flash-image",
-        genai.Text("A minimalist composition featuring a single, delicate red maple leaf positioned in the bottom-right of the frame. The background is a vast, empty off-white canvas, creating significant negative space for text. Soft, diffused lighting from the top left. Square image."),
-    )
-
-    for _, part := range result.Candidates[0].Content.Parts {
-        if part.Text != "" {
-            fmt.Println(part.Text)
-        } else if part.InlineData != nil {
-            imageBytes := part.InlineData.Data
-            outputFilename := "minimalist_design.png"
-            _ = os.WriteFile(outputFilename, imageBytes, 0644)
-        }
-    }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -2884,7 +1296,6 @@ curl -s -X POST
 
 ```
 
-
 !A minimalist composition featuring a single, delicate red maple leaf...
 
 A minimalist composition featuring a single, delicate red maple leaf...
@@ -2900,92 +1311,12 @@ Make a 3 panel comic in a [style]. Put the character in a [type of scene].
 
 ```
 
-
 ### Prompt
 
 ```
 Make a 3 panel comic in a gritty, noir art style with high-contrast black and white inks. Put the character in a humurous scene.
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-image_input = Image.open('/path/to/your/man_in_white_glasses.jpg')
-text_input = "Make a 3 panel comic in a gritty, noir art style with high-contrast black and white inks. Put the character in a humurous scene."
-
-response = client.models.generate_content(
-    model="gemini-3-pro-image-preview",
-    contents=[text_input, image_input],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("comic_panel.jpg")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class ComicPanel {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-3-pro-image-preview",
-          Content.fromParts(
-              Part.fromText("""
-                  Make a 3 panel comic in a gritty, noir art style with high-contrast black and white inks. Put the character in a humurous scene.
-                  """),
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/man_in_white_glasses.jpg")),
-                  "image/jpeg")),
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("comic_panel.jpg"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -3031,65 +1362,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    "google.golang.org/genai"
-)
-
-func main() {
-
-    ctx := context.Background()
-    client, err := genai.NewClient(ctx, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    imagePath := "/path/to/your/man_in_white_glasses.jpg"
-    imgData, _ := os.ReadFile(imagePath)
-
-    parts := []*genai.Part{
-      genai.NewPartFromText("Make a 3 panel comic in a gritty, noir art style with high-contrast black and white inks. Put the character in a humurous scene."),
-      &genai.Part{
-        InlineData: &genai.Blob{
-          MIMEType: "image/jpeg",
-          Data:     imgData,
-        },
-      },
-    }
-
-    contents := []*genai.Content{
-      genai.NewContentFromParts(parts, genai.RoleUser),
-    }
-
-    result, _ := client.Models.GenerateContent(
-        ctx,
-        "gemini-3-pro-image-preview",
-        contents,
-    )
-
-    for _, part := range result.Candidates[0].Content.Parts {
-        if part.Text != "" {
-            fmt.Println(part.Text)
-        } else if part.InlineData != nil {
-            imageBytes := part.InlineData.Data
-            outputFilename := "comic_panel.jpg"
-            _ = os.WriteFile(outputFilename, imageBytes, 0644)
-        }
-    }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -3121,12 +1393,8 @@ curl -s -X POST
 
 ```
 
-
-
-
-* Input:                                   Input image                  
-  * Output:                                   Make a 3 panel comic in a gritty, noir art style...                  
-
+- Input: Input image
+  - Output: Make a 3 panel comic in a gritty, noir art style...
 
 ### Prompts for editing images
 
@@ -3145,7 +1413,6 @@ integrate].
 
 ```
 
-
 ### Prompt
 
 ```
@@ -3154,89 +1421,6 @@ on its head. Make it look like it's sitting comfortably and matches the soft
 lighting of the photo."
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-# Base image prompt: "A photorealistic picture of a fluffy ginger cat sitting on a wooden floor, looking directly at the camera. Soft, natural light from a window."
-image_input = Image.open('/path/to/your/cat_photo.png')
-text_input = """Using the provided image of my cat, please add a small, knitted wizard hat on its head. Make it look like it's sitting comfortably and not falling off."""
-
-# Generate an image from a text prompt
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents=[text_input, image_input],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("cat_with_hat.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class AddRemoveElements {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          Content.fromParts(
-              Part.fromText("""
-                  Using the provided image of my cat, please add a small,
-                  knitted wizard hat on its head. Make it look like it's
-                  sitting comfortably and not falling off.
-                  """),
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/cat_photo.png")),
-                  "image/png")),
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("cat_with_hat.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -3282,65 +1466,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-  "context"
-  "fmt"
-  "log"
-  "os"
-  "google.golang.org/genai"
-)
-
-func main() {
-
-  ctx := context.Background()
-  client, err := genai.NewClient(ctx, nil)
-  if err != nil {
-      log.Fatal(err)
-  }
-
-  imagePath := "/path/to/your/cat_photo.png"
-  imgData, _ := os.ReadFile(imagePath)
-
-  parts := []*genai.Part{
-    genai.NewPartFromText("Using the provided image of my cat, please add a small, knitted wizard hat on its head. Make it look like it's sitting comfortably and not falling off."),
-    &genai.Part{
-      InlineData: &genai.Blob{
-        MIMEType: "image/png",
-        Data:     imgData,
-      },
-    },
-  }
-
-  contents := []*genai.Content{
-    genai.NewContentFromParts(parts, genai.RoleUser),
-  }
-
-  result, _ := client.Models.GenerateContent(
-      ctx,
-      "gemini-2.5-flash-image",
-      contents,
-  )
-
-  for _, part := range result.Candidates[0].Content.Parts {
-      if part.Text != "" {
-          fmt.Println(part.Text)
-      } else if part.InlineData != nil {
-          imageBytes := part.InlineData.Data
-          outputFilename := "cat_with_hat.png"
-          _ = os.WriteFile(outputFilename, imageBytes, 0644)
-      }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -3377,12 +1502,8 @@ curl -X POST \
 
 ```
 
-
-
-
-* Input:                                   A photorealistic picture of a fluffy ginger cat...                  
-  * Output:                                   Using the provided image of my cat, please add a small, knitted wizard hat...                  
-
+- Input: A photorealistic picture of a fluffy ginger cat...
+  - Output: Using the provided image of my cat, please add a small, knitted wizard hat...
 
 #### 2\. Inpainting (Semantic masking)
 
@@ -3397,7 +1518,6 @@ preserving the original style, lighting, and composition.
 
 ```
 
-
 ### Prompt
 
 ```
@@ -3406,91 +1526,6 @@ a vintage, brown leather chesterfield sofa. Keep the rest of the room,
 including the pillows on the sofa and the lighting, unchanged."
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-# Base image prompt: "A wide shot of a modern, well-lit living room with a prominent blue sofa in the center. A coffee table is in front of it and a large window is in the background."
-living_room_image = Image.open('/path/to/your/living_room.png')
-text_input = """Using the provided image of a living room, change only the blue sofa to be a vintage, brown leather chesterfield sofa. Keep the rest of the room, including the pillows on the sofa and the lighting, unchanged."""
-
-# Generate an image from a text prompt
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents=[living_room_image, text_input],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("living_room_edited.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class Inpainting {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          Content.fromParts(
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/living_room.png")),
-                  "image/png"),
-              Part.fromText("""
-                  Using the provided image of a living room, change
-                  only the blue sofa to be a vintage, brown leather
-                  chesterfield sofa. Keep the rest of the room,
-                  including the pillows on the sofa and the lighting,
-                  unchanged.
-                  """)),
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("living_room_edited.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -3536,65 +1571,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-  "context"
-  "fmt"
-  "log"
-  "os"
-  "google.golang.org/genai"
-)
-
-func main() {
-
-  ctx := context.Background()
-  client, err := genai.NewClient(ctx, nil)
-  if err != nil {
-      log.Fatal(err)
-  }
-
-  imagePath := "/path/to/your/living_room.png"
-  imgData, _ := os.ReadFile(imagePath)
-
-  parts := []*genai.Part{
-    &genai.Part{
-      InlineData: &genai.Blob{
-        MIMEType: "image/png",
-        Data:     imgData,
-      },
-    },
-    genai.NewPartFromText("Using the provided image of a living room, change only the blue sofa to be a vintage, brown leather chesterfield sofa. Keep the rest of the room, including the pillows on the sofa and the lighting, unchanged."),
-  }
-
-  contents := []*genai.Content{
-    genai.NewContentFromParts(parts, genai.RoleUser),
-  }
-
-  result, _ := client.Models.GenerateContent(
-      ctx,
-      "gemini-2.5-flash-image",
-      contents,
-  )
-
-  for _, part := range result.Candidates[0].Content.Parts {
-      if part.Text != "" {
-          fmt.Println(part.Text)
-      } else if part.InlineData != nil {
-          imageBytes := part.InlineData.Data
-          outputFilename := "living_room_edited.png"
-          _ = os.WriteFile(outputFilename, imageBytes, 0644)
-      }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -3631,12 +1607,8 @@ curl -X POST \
 
 ```
 
-
-
-
-* Input:                                         A wide shot of a modern, well-lit living room...                    
-  * Output:                                         Using the provided image of a living room, change only the blue sofa to be a vintage, brown leather chesterfield sofa...                    
-
+- Input: A wide shot of a modern, well-lit living room...
+  - Output: Using the provided image of a living room, change only the blue sofa to be a vintage, brown leather chesterfield sofa...
 
 #### 3\. Style transfer
 
@@ -3649,100 +1621,12 @@ Transform the provided photograph of [subject] into the artistic style of [artis
 
 ```
 
-
 ### Prompt
 
 ```
 "Transform the provided photograph of a modern city street at night into the artistic style of Vincent van Gogh's 'Starry Night'. Preserve the original composition of buildings and cars, but render all elements with swirling, impasto brushstrokes and a dramatic palette of deep blues and bright yellows."
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-# Base image prompt: "A photorealistic, high-resolution photograph of a busy city street in New York at night, with bright neon signs, yellow taxis, and tall skyscrapers."
-city_image = Image.open('/path/to/your/city.png')
-text_input = """Transform the provided photograph of a modern city street at night into the artistic style of Vincent van Gogh's 'Starry Night'. Preserve the original composition of buildings and cars, but render all elements with swirling, impasto brushstrokes and a dramatic palette of deep blues and bright yellows."""
-
-# Generate an image from a text prompt
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents=[city_image, text_input],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("city_style_transfer.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class StyleTransfer {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          Content.fromParts(
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/city.png")),
-                  "image/png"),
-              Part.fromText("""
-                  Transform the provided photograph of a modern city
-                  street at night into the artistic style of
-                  Vincent van Gogh's 'Starry Night'. Preserve the
-                  original composition of buildings and cars, but
-                  render all elements with swirling, impasto
-                  brushstrokes and a dramatic palette of deep blues
-                  and bright yellows.
-                  """)),
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("city_style_transfer.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -3788,65 +1672,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-  "context"
-  "fmt"
-  "log"
-  "os"
-  "google.golang.org/genai"
-)
-
-func main() {
-
-  ctx := context.Background()
-  client, err := genai.NewClient(ctx, nil)
-  if err != nil {
-      log.Fatal(err)
-  }
-
-  imagePath := "/path/to/your/city.png"
-  imgData, _ := os.ReadFile(imagePath)
-
-  parts := []*genai.Part{
-    &genai.Part{
-      InlineData: &genai.Blob{
-        MIMEType: "image/png",
-        Data:     imgData,
-      },
-    },
-    genai.NewPartFromText("Transform the provided photograph of a modern city street at night into the artistic style of Vincent van Gogh's 'Starry Night'. Preserve the original composition of buildings and cars, but render all elements with swirling, impasto brushstrokes and a dramatic palette of deep blues and bright yellows."),
-  }
-
-  contents := []*genai.Content{
-    genai.NewContentFromParts(parts, genai.RoleUser),
-  }
-
-  result, _ := client.Models.GenerateContent(
-      ctx,
-      "gemini-2.5-flash-image",
-      contents,
-  )
-
-  for _, part := range result.Candidates[0].Content.Parts {
-      if part.Text != "" {
-          fmt.Println(part.Text)
-      } else if part.InlineData != nil {
-          imageBytes := part.InlineData.Data
-          outputFilename := "city_style_transfer.png"
-          _ = os.WriteFile(outputFilename, imageBytes, 0644)
-      }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -3883,12 +1708,8 @@ curl -X POST \
 
 ```
 
-
-
-
-* Input:                                         A photorealistic, high-resolution photograph of a busy city street...                    
-  * Output:                                         Transform the provided photograph of a modern city street at night...                    
-
+- Input: A photorealistic, high-resolution photograph of a busy city street...
+  - Output: Transform the provided photograph of a modern city street at night...
 
 #### 4\. Advanced composition: Combining multiple images
 
@@ -3903,7 +1724,6 @@ The final image should be a [description of the final scene].
 
 ```
 
-
 ### Prompt
 
 ```
@@ -3913,100 +1733,6 @@ Generate a realistic, full-body shot of the woman wearing the dress, with
 the lighting and shadows adjusted to match the outdoor environment."
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-# Base image prompts:
-# 1. Dress: "A professionally shot photo of a blue floral summer dress on a plain white background, ghost mannequin style."
-# 2. Model: "Full-body shot of a woman with her hair in a bun, smiling, standing against a neutral grey studio background."
-dress_image = Image.open('/path/to/your/dress.png')
-model_image = Image.open('/path/to/your/model.png')
-
-text_input = """Create a professional e-commerce fashion photo. Take the blue floral dress from the first image and let the woman from the second image wear it. Generate a realistic, full-body shot of the woman wearing the dress, with the lighting and shadows adjusted to match the outdoor environment."""
-
-# Generate an image from a text prompt
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents=[dress_image, model_image, text_input],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("fashion_ecommerce_shot.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class AdvancedComposition {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          Content.fromParts(
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/dress.png")),
-                  "image/png"),
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/model.png")),
-                  "image/png"),
-              Part.fromText("""
-                  Create a professional e-commerce fashion photo.
-                  Take the blue floral dress from the first image and
-                  let the woman from the second image wear it. Generate
-                  a realistic, full-body shot of the woman wearing the
-                  dress, with the lighting and shadows adjusted to
-                  match the outdoor environment.
-                  """)),
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("fashion_ecommerce_shot.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -4061,71 +1787,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-  "context"
-  "fmt"
-  "log"
-  "os"
-  "google.golang.org/genai"
-)
-
-func main() {
-
-  ctx := context.Background()
-  client, err := genai.NewClient(ctx, nil)
-  if err != nil {
-      log.Fatal(err)
-  }
-
-  imgData1, _ := os.ReadFile("/path/to/your/dress.png")
-  imgData2, _ := os.ReadFile("/path/to/your/model.png")
-
-  parts := []*genai.Part{
-    &genai.Part{
-      InlineData: &genai.Blob{
-        MIMEType: "image/png",
-        Data:     imgData1,
-      },
-    },
-    &genai.Part{
-      InlineData: &genai.Blob{
-        MIMEType: "image/png",
-        Data:     imgData2,
-      },
-    },
-    genai.NewPartFromText("Create a professional e-commerce fashion photo. Take the blue floral dress from the first image and let the woman from the second image wear it. Generate a realistic, full-body shot of the woman wearing the dress, with the lighting and shadows adjusted to match the outdoor environment."),
-  }
-
-  contents := []*genai.Content{
-    genai.NewContentFromParts(parts, genai.RoleUser),
-  }
-
-  result, _ := client.Models.GenerateContent(
-      ctx,
-      "gemini-2.5-flash-image",
-      contents,
-  )
-
-  for _, part := range result.Candidates[0].Content.Parts {
-      if part.Text != "" {
-          fmt.Println(part.Text)
-      } else if part.InlineData != nil {
-          imageBytes := part.InlineData.Data
-          outputFilename := "fashion_ecommerce_shot.png"
-          _ = os.WriteFile(outputFilename, imageBytes, 0644)
-      }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -4170,13 +1831,9 @@ curl -X POST \
 
 ```
 
-
-
-
-* Input 1:                                         A professionally shot photo of a blue floral summer dress...                    
-  * Input 2:                                         Full-body shot of a woman with her hair in a bun...                    
-  * Output:                                         Create a professional e-commerce fashion photo...                    
-
+- Input 1: A professionally shot photo of a blue floral summer dress...
+  - Input 2: Full-body shot of a woman with her hair in a bun...
+  - Output: Create a professional e-commerce fashion photo...
 
 #### 5\. High-fidelity detail preservation
 
@@ -4192,7 +1849,6 @@ element should integrate].
 
 ```
 
-
 ### Prompt
 
 ```
@@ -4203,100 +1859,6 @@ should look like it's naturally printed on the fabric, following the folds
 of the shirt."
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-# Base image prompts:
-# 1. Woman: "A professional headshot of a woman with brown hair and blue eyes, wearing a plain black t-shirt, against a neutral studio background."
-# 2. Logo: "A simple, modern logo with the letters 'G' and 'A' in a white circle."
-woman_image = Image.open('/path/to/your/woman.png')
-logo_image = Image.open('/path/to/your/logo.png')
-text_input = """Take the first image of the woman with brown hair, blue eyes, and a neutral expression. Add the logo from the second image onto her black t-shirt. Ensure the woman's face and features remain completely unchanged. The logo should look like it's naturally printed on the fabric, following the folds of the shirt."""
-
-# Generate an image from a text prompt
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents=[woman_image, logo_image, text_input],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("woman_with_logo.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class HighFidelity {
-  public static void main(String[] args) throws IOException {
-
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-2.5-flash-image",
-          Content.fromParts(
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/woman.png")),
-                  "image/png"),
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/logo.png")),
-                  "image/png"),
-              Part.fromText("""
-                  Take the first image of the woman with brown hair,
-                  blue eyes, and a neutral expression. Add the logo
-                  from the second image onto her black t-shirt.
-                  Ensure the woman's face and features remain
-                  completely unchanged. The logo should look like
-                  it's naturally printed on the fabric, following
-                  the folds of the shirt.
-                  """)),
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("woman_with_logo.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -4351,71 +1913,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-  "context"
-  "fmt"
-  "log"
-  "os"
-  "google.golang.org/genai"
-)
-
-func main() {
-
-  ctx := context.Background()
-  client, err := genai.NewClient(ctx, nil)
-  if err != nil {
-      log.Fatal(err)
-  }
-
-  imgData1, _ := os.ReadFile("/path/to/your/woman.png")
-  imgData2, _ := os.ReadFile("/path/to/your/logo.png")
-
-  parts := []*genai.Part{
-    &genai.Part{
-      InlineData: &genai.Blob{
-        MIMEType: "image/png",
-        Data:     imgData1,
-      },
-    },
-    &genai.Part{
-      InlineData: &genai.Blob{
-        MIMEType: "image/png",
-        Data:     imgData2,
-      },
-    },
-    genai.NewPartFromText("Take the first image of the woman with brown hair, blue eyes, and a neutral expression. Add the logo from the second image onto her black t-shirt. Ensure the woman's face and features remain completely unchanged. The logo should look like it's naturally printed on the fabric, following the folds of the shirt."),
-  }
-
-  contents := []*genai.Content{
-    genai.NewContentFromParts(parts, genai.RoleUser),
-  }
-
-  result, _ := client.Models.GenerateContent(
-      ctx,
-      "gemini-2.5-flash-image",
-      contents,
-  )
-
-  for _, part := range result.Candidates[0].Content.Parts {
-      if part.Text != "" {
-          fmt.Println(part.Text)
-      } else if part.InlineData != nil {
-          imageBytes := part.InlineData.Data
-          outputFilename := "woman_with_logo.png"
-          _ = os.WriteFile(outputFilename, imageBytes, 0644)
-      }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -4460,13 +1957,9 @@ curl -X POST \
 
 ```
 
-
-
-
-* Input 1:                                         A professional headshot of a woman with brown hair and blue eyes...                    
-  * Input 2:                                         A simple, modern logo with the letters 'G' and 'A'...                    
-  * Output:                                         Take the first image of the woman with brown hair, blue eyes, and a neutral expression...                    
-
+- Input 1: A professional headshot of a woman with brown hair and blue eyes...
+  - Input 2: A simple, modern logo with the letters 'G' and 'A'...
+  - Output: Take the first image of the woman with brown hair, blue eyes, and a neutral expression...
 
 #### 6\. Bring something to life
 
@@ -4480,91 +1973,12 @@ photo. Keep the [specific features] from the sketch but add [new details/materia
 
 ```
 
-
 ### Prompt
 
 ```
 "Turn this rough pencil sketch of a futuristic car into a polished photo of the finished concept car in a showroom. Keep the sleek lines and low profile from the sketch but add metallic blue paint and neon rim lighting."
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from PIL import Image
-
-client = genai.Client()
-
-# Base image prompt: "A rough pencil sketch of a flat sports car on white paper."
-sketch_image = Image.open('/path/to/your/car_sketch.png')
-text_input = """Turn this rough pencil sketch of a futuristic car into a polished photo of the finished concept car in a showroom. Keep the sleek lines and low profile from the sketch but add metallic blue paint and neon rim lighting."""
-
-response = client.models.generate_content(
-    model="gemini-3-pro-image-preview",
-    contents=[sketch_image, text_input],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("car_photo.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class BringToLife {
-  public static void main(String[] args) throws IOException {
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-3-pro-image-preview",
-          Content.fromParts(
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/car_sketch.png")),
-                  "image/png"),
-              Part.fromText("""
-                  Turn this rough pencil sketch of a futuristic car into a polished photo of the finished concept car in a showroom. Keep the sleek lines and low profile from the sketch but add metallic blue paint and neon rim lighting.
-                  """)),
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("car_photo.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -4610,64 +2024,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-  "context"
-  "fmt"
-  "log"
-  "os"
-  "google.golang.org/genai"
-)
-
-func main() {
-
-  ctx := context.Background()
-  client, err := genai.NewClient(ctx, nil)
-  if err != nil {
-      log.Fatal(err)
-  }
-
-  imgData, _ := os.ReadFile("/path/to/your/car_sketch.png")
-
-  parts := []*genai.Part{
-    &genai.Part{
-      InlineData: &genai.Blob{
-        MIMEType: "image/png",
-        Data:     imgData,
-      },
-    },
-    genai.NewPartFromText("Turn this rough pencil sketch of a futuristic car into a polished photo of the finished concept car in a showroom. Keep the sleek lines and low profile from the sketch but add metallic blue paint and neon rim lighting."),
-  }
-
-  contents := []*genai.Content{
-    genai.NewContentFromParts(parts, genai.RoleUser),
-  }
-
-  result, _ := client.Models.GenerateContent(
-      ctx,
-      "gemini-3-pro-image-preview",
-      contents,
-  )
-
-  for _, part := range result.Candidates[0].Content.Parts {
-      if part.Text != "" {
-          fmt.Println(part.Text)
-      } else if part.InlineData != nil {
-          imageBytes := part.InlineData.Data
-          outputFilename := "car_photo.png"
-          _ = os.WriteFile(outputFilename, imageBytes, 0644)
-      }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -4704,12 +2060,8 @@ curl -X POST \
 
 ```
 
-
-
-
-* Input:                                         Rough sketch of a car                    
-  * Output:                                         Polished photo of a car                    
-
+- Input: Rough sketch of a car
+  - Output: Polished photo of a car
 
 #### 7\. Character consistency: 360 view
 
@@ -4722,91 +2074,12 @@ A studio portrait of [person] against [background], [looking forward/in profile 
 
 ```
 
-
 ### Prompt
 
 ```
 A studio portrait of this man against white, in profile looking right
 
 ```
-
-
-### Python
-
-```
-from google import genai
-from google.genai import types
-from PIL import Image
-
-client = genai.Client()
-
-image_input = Image.open('/path/to/your/man_in_white_glasses.jpg')
-text_input = """A studio portrait of this man against white, in profile looking right"""
-
-response = client.models.generate_content(
-    model="gemini-3-pro-image-preview",
-    contents=[text_input, image_input],
-)
-
-for part in response.parts:
-    if part.text is not None:
-        print(part.text)
-    elif part.inline_data is not None:
-        image = part.as_image()
-        image.save("man_right_profile.png")
-
-```
-
-
-### Java
-
-```
-import com.google.genai.Client;
-import com.google.genai.types.Content;
-import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.Part;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class CharacterConsistency {
-  public static void main(String[] args) throws IOException {
-    try (Client client = new Client()) {
-      GenerateContentConfig config = GenerateContentConfig.builder()
-          .responseModalities("TEXT", "IMAGE")
-          .build();
-
-      GenerateContentResponse response = client.models.generateContent(
-          "gemini-3-pro-image-preview",
-          Content.fromParts(
-              Part.fromText("""
-                  A studio portrait of this man against white, in profile looking right
-                  """),
-              Part.fromBytes(
-                  Files.readAllBytes(
-                      Path.of("/path/to/your/man_in_white_glasses.jpg")),
-                  "image/jpeg")),
-          config);
-
-      for (Part part : response.parts()) {
-        if (part.text().isPresent()) {
-          System.out.println(part.text().get());
-        } else if (part.inlineData().isPresent()) {
-          var blob = part.inlineData().get();
-          if (blob.data().isPresent()) {
-            Files.write(Paths.get("man_right_profile.png"), blob.data().get());
-          }
-        }
-      }
-    }
-  }
-}
-
-```
-
 
 ### JavaScript
 
@@ -4852,65 +2125,6 @@ main();
 
 ```
 
-
-### Go
-
-```
-package main
-
-import (
-  "context"
-  "fmt"
-  "log"
-  "os"
-  "google.golang.org/genai"
-)
-
-func main() {
-
-  ctx := context.Background()
-  client, err := genai.NewClient(ctx, nil)
-  if err != nil {
-      log.Fatal(err)
-  }
-
-  imagePath := "/path/to/your/man_in_white_glasses.jpg"
-  imgData, _ := os.ReadFile(imagePath)
-
-  parts := []*genai.Part{
-    genai.NewPartFromText("A studio portrait of this man against white, in profile looking right"),
-    &genai.Part{
-      InlineData: &genai.Blob{
-        MIMEType: "image/jpeg",
-        Data:     imgData,
-      },
-    },
-  }
-
-  contents := []*genai.Content{
-    genai.NewContentFromParts(parts, genai.RoleUser),
-  }
-
-  result, _ := client.Models.GenerateContent(
-      ctx,
-      "gemini-3-pro-image-preview",
-      contents,
-  )
-
-  for _, part := range result.Candidates[0].Content.Parts {
-      if part.Text != "" {
-          fmt.Println(part.Text)
-      } else if part.InlineData != nil {
-          imageBytes := part.InlineData.Data
-          outputFilename := "man_right_profile.png"
-          _ = os.WriteFile(outputFilename, imageBytes, 0644)
-      }
-  }
-}
-
-```
-
-
 ### REST
 
 ```
@@ -4947,57 +2161,37 @@ curl -X POST \
 
 ```
 
-
-
-
-* Input:                                         Original image                    
-  * Output 1:                                         Man in white glasses looking right                    
-  * Output 2:                                         Man in white glasses looking forward                    
-
+- Input: Original image
+  - Output 1: Man in white glasses looking right
+  - Output 2: Man in white glasses looking forward
 
 ### Best Practices
 
 To elevate your results from good to great, incorporate these professional strategies into your workflow.
 
-*   **Be Hyper-Specific:** The more detail you provide, the more control you have. Instead of "fantasy armor," describe it: "ornate elven plate armor, etched with silver leaf patterns, with a high collar and pauldrons shaped like falcon wings."
-*   **Provide Context and Intent:** Explain the _purpose_ of the image. The model's understanding of context will influence the final output. For example, "Create a logo for a high-end, minimalist skincare brand" will yield better results than just "Create a logo."
-*   **Iterate and Refine:** Don't expect a perfect image on the first try. Use the conversational nature of the model to make small changes. Follow up with prompts like, "That's great, but can you make the lighting a bit warmer?" or "Keep everything the same, but change the character's expression to be more serious."
-*   **Use Step-by-Step Instructions:** For complex scenes with many elements, break your prompt into steps. "First, create a background of a serene, misty forest at dawn. Then, in the foreground, add a moss-covered ancient stone altar. Finally, place a single, glowing sword on top of the altar."
-*   **Use "Semantic Negative Prompts":** Instead of saying "no cars," describe the desired scene positively: "an empty, deserted street with no signs of traffic."
-*   **Control the Camera:** Use photographic and cinematic language to control the composition. Terms like `wide-angle shot`, `macro shot`, `low-angle perspective`.
+- **Be Hyper-Specific:** The more detail you provide, the more control you have. Instead of "fantasy armor," describe it: "ornate elven plate armor, etched with silver leaf patterns, with a high collar and pauldrons shaped like falcon wings."
+- **Provide Context and Intent:** Explain the _purpose_ of the image. The model's understanding of context will influence the final output. For example, "Create a logo for a high-end, minimalist skincare brand" will yield better results than just "Create a logo."
+- **Iterate and Refine:** Don't expect a perfect image on the first try. Use the conversational nature of the model to make small changes. Follow up with prompts like, "That's great, but can you make the lighting a bit warmer?" or "Keep everything the same, but change the character's expression to be more serious."
+- **Use Step-by-Step Instructions:** For complex scenes with many elements, break your prompt into steps. "First, create a background of a serene, misty forest at dawn. Then, in the foreground, add a moss-covered ancient stone altar. Finally, place a single, glowing sword on top of the altar."
+- **Use "Semantic Negative Prompts":** Instead of saying "no cars," describe the desired scene positively: "an empty, deserted street with no signs of traffic."
+- **Control the Camera:** Use photographic and cinematic language to control the composition. Terms like `wide-angle shot`, `macro shot`, `low-angle perspective`.
 
-Limitations
------------
+## Limitations
 
-*   For best performance, use the following languages: EN, es-MX, ja-JP, zh-CN, hi-IN.
-*   Image generation does not support audio or video inputs.
-*   The model won't always follow the exact number of image outputs that the user explicitly asks for.
-*   The model works best with up to 3 images as an input.
-*   When generating text for an image, Gemini works best if you first generate the text and then ask for an image with the text.
-*   All generated images include a SynthID watermark.
+- For best performance, use the following languages: EN, es-MX, ja-JP, zh-CN, hi-IN.
+- Image generation does not support audio or video inputs.
+- The model won't always follow the exact number of image outputs that the user explicitly asks for.
+- The model works best with up to 3 images as an input.
+- When generating text for an image, Gemini works best if you first generate the text and then ask for an image with the text.
+- All generated images include a SynthID watermark.
 
-Optional configurations
------------------------
+## Optional configurations
 
 You can optionally configure the response modalities and aspect ratio of the model's output in the `config` field of `generate_content` calls.
 
 ### Output types
 
 The model defaults to returning text and image responses (i.e. `response_modalities=['Text', 'Image']`). You can configure the response to return only images without text using `response_modalities=['Image']`.
-
-### Python
-
-```
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents=[prompt],
-    config=types.GenerateContentConfig(
-        response_modalities=['Image']
-    )
-)
-
-```
-
 
 ### JavaScript
 
@@ -5011,36 +2205,6 @@ const response = await ai.models.generateContent({
   });
 
 ```
-
-
-### Go
-
-```
-result, _ := client.Models.GenerateContent(
-    ctx,
-    "gemini-2.5-flash-image",
-    genai.Text("Create a picture of a nano banana dish in a " +
-                " fancy restaurant with a Gemini theme"),
-    &genai.GenerateContentConfig{
-        ResponseModalities: "Image",
-    },
-  )
-
-```
-
-
-### Java
-
-```
-response = client.models.generateContent(
-    "gemini-2.5-flash-image",
-    prompt,
-    GenerateContentConfig.builder()
-        .responseModalities("IMAGE")
-        .build());
-
-```
-
 
 ### REST
 
@@ -5058,26 +2222,9 @@ response = client.models.generateContent(
 
 ```
 
-
 ### Aspect ratios
 
 The model defaults to matching the output image size to that of your input image, or otherwise generates 1:1 squares. You can control the aspect ratio of the output image using the `aspect_ratio` field under `image_config` in the response request, shown here:
-
-### Python
-
-```
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",
-    contents=[prompt],
-    config=types.GenerateContentConfig(
-        image_config=types.ImageConfig(
-            aspect_ratio="16:9",
-        )
-    )
-)
-
-```
-
 
 ### JavaScript
 
@@ -5093,40 +2240,6 @@ const response = await ai.models.generateContent({
   });
 
 ```
-
-
-### Go
-
-```
-result, _ := client.Models.GenerateContent(
-    ctx,
-    "gemini-2.5-flash-image",
-    genai.Text("Create a picture of a nano banana dish in a " +
-                " fancy restaurant with a Gemini theme"),
-    &genai.GenerateContentConfig{
-        ImageConfig: &genai.ImageConfig{
-          AspectRatio: "16:9",
-        },
-    }
-  )
-
-```
-
-
-### Java
-
-```
-response = client.models.generateContent(
-    "gemini-2.5-flash-image",
-    prompt,
-    GenerateContentConfig.builder()
-        .imageConfig(ImageConfig.builder()
-            .aspectRatio("16:9")
-            .build())
-        .build());
-
-```
-
 
 ### REST
 
@@ -5146,65 +2259,56 @@ response = client.models.generateContent(
 
 ```
 
-
 The different ratios available and the size of the image generated are listed in the following tables:
 
 **Gemini 2.5 Flash Image**
 
-
-|Aspect ratio|Resolution|Tokens|
-|------------|----------|------|
-|1:1         |1024x1024 |1290  |
-|2:3         |832x1248  |1290  |
-|3:2         |1248x832  |1290  |
-|3:4         |864x1184  |1290  |
-|4:3         |1184x864  |1290  |
-|4:5         |896x1152  |1290  |
-|5:4         |1152x896  |1290  |
-|9:16        |768x1344  |1290  |
-|16:9        |1344x768  |1290  |
-|21:9        |1536x672  |1290  |
-
+| Aspect ratio | Resolution | Tokens |
+| ------------ | ---------- | ------ |
+| 1:1          | 1024x1024  | 1290   |
+| 2:3          | 832x1248   | 1290   |
+| 3:2          | 1248x832   | 1290   |
+| 3:4          | 864x1184   | 1290   |
+| 4:3          | 1184x864   | 1290   |
+| 4:5          | 896x1152   | 1290   |
+| 5:4          | 1152x896   | 1290   |
+| 9:16         | 768x1344   | 1290   |
+| 16:9         | 1344x768   | 1290   |
+| 21:9         | 1536x672   | 1290   |
 
 **Gemini 3 Pro Image Preview**
 
+| Aspect ratio | 1K resolution | 1K Tokens | 2K resolution | 2K Tokens | 4K resolution | 4K Tokens |
+| ------------ | ------------- | --------- | ------------- | --------- | ------------- | --------- |
+| 1:1          | 1024x1024     | 1210      | 2048x2048     | 1210      | 4096x4096     | 2000      |
+| 2:3          | 848x1264      | 1210      | 1696x2528     | 1210      | 3392x5056     | 2000      |
+| 3:2          | 1264x848      | 1210      | 2528x1696     | 1210      | 5056x3392     | 2000      |
+| 3:4          | 896x1200      | 1210      | 1792x2400     | 1210      | 3584x4800     | 2000      |
+| 4:3          | 1200x896      | 1210      | 2400x1792     | 1210      | 4800x3584     | 2000      |
+| 4:5          | 928x1152      | 1210      | 1856x2304     | 1210      | 3712x4608     | 2000      |
+| 5:4          | 1152x928      | 1210      | 2304x1856     | 1210      | 4608x3712     | 2000      |
+| 9:16         | 768x1376      | 1210      | 1536x2752     | 1210      | 3072x5504     | 2000      |
+| 16:9         | 1376x768      | 1210      | 2752x1536     | 1210      | 5504x3072     | 2000      |
+| 21:9         | 1584x672      | 1210      | 3168x1344     | 1210      | 6336x2688     | 2000      |
 
-|Aspect ratio|1K resolution|1K Tokens|2K resolution|2K Tokens|4K resolution|4K Tokens|
-|------------|-------------|---------|-------------|---------|-------------|---------|
-|1:1         |1024x1024    |1210     |2048x2048    |1210     |4096x4096    |2000     |
-|2:3         |848x1264     |1210     |1696x2528    |1210     |3392x5056    |2000     |
-|3:2         |1264x848     |1210     |2528x1696    |1210     |5056x3392    |2000     |
-|3:4         |896x1200     |1210     |1792x2400    |1210     |3584x4800    |2000     |
-|4:3         |1200x896     |1210     |2400x1792    |1210     |4800x3584    |2000     |
-|4:5         |928x1152     |1210     |1856x2304    |1210     |3712x4608    |2000     |
-|5:4         |1152x928     |1210     |2304x1856    |1210     |4608x3712    |2000     |
-|9:16        |768x1376     |1210     |1536x2752    |1210     |3072x5504    |2000     |
-|16:9        |1376x768     |1210     |2752x1536    |1210     |5504x3072    |2000     |
-|21:9        |1584x672     |1210     |3168x1344    |1210     |6336x2688    |2000     |
-
-
-When to use Imagen
-------------------
+## When to use Imagen
 
 In addition to using Gemini's built-in image generation capabilities, you can also access Imagen, our specialized image generation model, through the Gemini API.
 
-
-
-* Attribute: Strengths
-  * Imagen: Model specializes in image generation.
-  * Gemini Native Image: Default recommendation.Unparalleled flexibility, contextual understanding, and simple, mask-free editing. Uniquely capable of multi-turn conversational editing.
-* Attribute: Availability
-  * Imagen: Generally available
-  * Gemini Native Image: Preview (Production usage allowed)
-* Attribute: Latency
-  * Imagen: Low. Optimized for near-real-time performance.
-  * Gemini Native Image: Higher. More computation is required for its advanced capabilities.
-* Attribute: Cost
-  * Imagen: Cost-effective for specialized tasks. $0.02/image to $0.12/image
-  * Gemini Native Image: Token-based pricing. $30 per 1 million tokens for image output (image output tokenized at 1290 tokens per image flat, up to 1024x1024px)
-* Attribute: Recommended tasks
-  * Imagen:                   Image quality, photorealism, artistic detail, or specific styles (e.g., impressionism, anime) are top priorities.          Infusing branding, style, or generating logos and product designs.          Generating advanced spelling or typography.              
-  * Gemini Native Image:                   Interleaved text and image generation to seamlessly blend text and images.          Combine creative elements from multiple images with a single prompt.          Make highly specific edits to images, modify individual elements with simple language commands, and iteratively work on an image.          Apply a specific design or texture from one image to another while preserving the original subject's form and details.              
-
+- Attribute: Strengths
+  - Imagen: Model specializes in image generation.
+  - Gemini Native Image: Default recommendation.Unparalleled flexibility, contextual understanding, and simple, mask-free editing. Uniquely capable of multi-turn conversational editing.
+- Attribute: Availability
+  - Imagen: Generally available
+  - Gemini Native Image: Preview (Production usage allowed)
+- Attribute: Latency
+  - Imagen: Low. Optimized for near-real-time performance.
+  - Gemini Native Image: Higher. More computation is required for its advanced capabilities.
+- Attribute: Cost
+  - Imagen: Cost-effective for specialized tasks. $0.02/image to $0.12/image
+  - Gemini Native Image: Token-based pricing. $30 per 1 million tokens for image output (image output tokenized at 1290 tokens per image flat, up to 1024x1024px)
+- Attribute: Recommended tasks
+  - Imagen: Image quality, photorealism, artistic detail, or specific styles (e.g., impressionism, anime) are top priorities. Infusing branding, style, or generating logos and product designs. Generating advanced spelling or typography.
+  - Gemini Native Image: Interleaved text and image generation to seamlessly blend text and images. Combine creative elements from multiple images with a single prompt. Make highly specific edits to images, modify individual elements with simple language commands, and iteratively work on an image. Apply a specific design or texture from one image to another while preserving the original subject's form and details.
 
 Imagen 4 should be your go-to model when starting to generate images with Imagen. Choose Imagen 4 Ultra for advanced use-cases or when you need the best image quality (note that can only generate one image at a time).

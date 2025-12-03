@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Film, Play, Pause, Settings, LucideScissors } from 'lucide-react';
+import { Film, Play, Pause, Settings } from 'lucide-react';
 import './index.css';
+import Sidebar from './components/Sidebar';
 import DirectorSanctum from './components/Planning/DirectorSanctum';
 import TimelineView from './components/Timeline/TimelineView';
 import { useMonstrosityEngine } from './hooks/useMonstrosityEngine';
@@ -94,75 +95,23 @@ function App() {
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
 
-  if (isLoading) {
-    return <div className="h-screen w-screen flex items-center justify-center">Loading Windows Movie Maker...</div>;
+  if (isLoading) { // TODO: Replace with loading screen
+    return (
+      <div className="h-screen w-screen flex items-center justify-center">
+        Loading Windows Movie Maker...
+      </div>
+    );
   }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden relative">
       <BackgroundEffect />
+
       {/* Sidebar */}
-      <aside className="w-[5vw] flex-shrink-0 glass-panel z-20 flex flex-col border-r border-black/30 relative">
-        <div className="absolute inset-y-0 right-[-1px] w-[1px] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.3)_30%,rgba(255,255,255,0.6)_50%,rgba(255,255,255,0.3)_70%,rgba(255,255,255,0)_100%)]" />
+      <div className="flex flex-col h-full justify-center">
+        <Sidebar currentPhase={currentPhase} setCurrentPhase={setCurrentPhase} />
+      </div>
 
-        {/*<div className="absolute inset-y-0 right-[-1px] top-[45vh] h-[80px] w-[80px] rounded-full bg-[radial-gradient(100%_100%_at_50%_100%,rgba(255,255,255,0.3)_0%,rgba(255,255,255,0.05)_50%,rgba(255,255,255,0.0)_90%)]" /> */}
-
-        {/* Fixed Header with the Film icon */}
-        <div className="flex items-center justify-center p-6 border-b border-black/40 flex-shrink-0">
-          <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <Film className="w-5 h-5" />
-          </h1>
-        </div>
-
-        {/* Phase Navigation - now vertically centered and taking up remaining space */}
-        <div className="flex flex-grow flex-col flex-1 items-center justify-center overflow-y-auto"> {/* Added overflow-y-auto here */}
-          <div className="p-4 space-y-1 w-full"> {/* Added w-full to make buttons take full width */}
-            <button
-              onClick={() => setCurrentPhase('planning')}
-              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${currentPhase === 'planning'
-                ? 'bg-slate-800 text-white shadow-md'
-                : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-                }`}
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={() => setCurrentPhase('decomposition')}
-              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${currentPhase === 'decomposition'
-                ? 'bg-slate-800 text-white shadow-md'
-                : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-                }`}
-              disabled={!visualBible.characters || Object.keys(visualBible.characters).length === 0}
-            >
-              <LucideScissors className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setCurrentPhase('production')}
-              className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${currentPhase === 'production'
-                ? 'bg-slate-800 text-white shadow-md'
-                : 'bg-transparent text-slate-400 hover:bg-slate-200 hover:text-slate-600'
-                }`}
-              disabled={scenes.length === 0}
-            >
-              <Play className="w-5 h-5" />
-            </button>
-          </div>
-
-          {currentPhase === 'production' && (
-            <div className="mt-3 p-2 bg-white/20 rounded">
-              <div className="text-xs text-[var(--text-secondary)] mb-1">
-                Pipeline: {pipelineStatus}
-              </div>
-              {pipelineStatus === 'running' && (
-                <div className="text-xs">
-                  Scene {pipelineProgress.currentSceneIndex + 1} / {pipelineProgress.totalScenes}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </aside>
       {/* Pipeline Controls (Production Phase) */}
       {currentPhase === 'production' && (
         <div className="p-4 border-b border-black/5 space-y-2">
@@ -225,7 +174,7 @@ function App() {
       )}
 
       {/* System Logs */}
-      <div className="flex-1 overflow-hidden flex flex-col p-4">
+      <div className="overflow-hidden glass-panel flex fixed bottom-0 left-1/2 transform -translate-x-1/2 z-50 w-64 h-24 flex-col p-4">
         <h3 className="text-xs font-bold uppercase tracking-wider mb-2">System Logs</h3>
         <div className="flex-1 overflow-y-auto space-y-1 text-xs font-mono">
           {systemLogs.slice(-20).map((log, i) => (
@@ -236,7 +185,7 @@ function App() {
                   ${log.type === 'success' ? 'text-green-600' : ''}
                   ${log.type === 'warning' ? 'text-orange-600' : ''}
                   ${log.type === 'info' ? 'text-[var(--text-secondary)]' : ''}
-                `}
+                  `}
             >
               [{new Date(log.timestamp).toLocaleTimeString()}] {log.message}
             </div>
