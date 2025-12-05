@@ -5,17 +5,22 @@ import {
   type ChatMessage,
   type CharacterTurnaround,
 } from "../../types";
+import { type PreCreatedEntity } from "../../types/preEntity";
 import CodexView from "./CodexView";
 import CharacterTurnaroundPanel from "./CharacterTurnaroundPanel";
+import { EntityCreationPanel } from "./EntityCreationPanel";
 
 interface DirectorSanctumProps {
   visualBible: VisualBible;
   messages: ChatMessage[];
+  preCreatedEntities: PreCreatedEntity[];
+  onPreCreatedEntitiesChange: (entities: PreCreatedEntity[]) => void;
   onGenerateVisualBible: (
     narrative: string,
     styleNotes: string
   ) => Promise<void>;
   onGenerateScenes: (narrative: string) => Promise<void>;
+  onGenerateBeats: (narrative: string) => Promise<void>; // NEW: Beat-based decomposition
   onSendMessage: (text: string) => void;
   onUpdateBible: (updates: Partial<VisualBible>) => void;
   phase: "planning" | "decomposition" | "production" | "review";
@@ -23,10 +28,15 @@ interface DirectorSanctumProps {
 
 const DirectorSanctum: React.FC<DirectorSanctumProps> = ({
   visualBible,
+  messages,
   onGenerateVisualBible,
   onGenerateScenes,
+  onGenerateBeats, // NEW
+  onSendMessage,
   onUpdateBible,
   phase,
+  preCreatedEntities,
+  onPreCreatedEntitiesChange,
 }) => {
   const [narrative, setNarrative] = useState("");
   const [styleNotes, setStyleNotes] = useState("");
@@ -35,6 +45,7 @@ const DirectorSanctum: React.FC<DirectorSanctumProps> = ({
     type: "character" | "setting";
     id: string;
   } | null>(null);
+  const [activeTab, setActiveTab] = useState<"codex" | "turnarounds">("codex"); // Moved from conditional block
 
   useEffect(() => {
     console.log(
@@ -63,81 +74,117 @@ const DirectorSanctum: React.FC<DirectorSanctumProps> = ({
     }
   };
 
+  const handleGenerateBeats = async () => {
+    if (!narrative.trim()) return;
+    setIsGenerating(true);
+    try {
+      await onGenerateBeats(narrative);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   if (phase === "planning") {
     return (
-      <div className="!w-full flex flex-1 items-start justify-start bg-cyan-500 h-full p-6 space-y-6">
+
+      <div className="!w-full flex flex-col h-full p-6 space-y-6 overflow-y-auto">
 
         <div>
-          <h2
-            className="text-4xl text-zinc-200 font-bold mb-6">
+          <h2 className="text-3xl text-zinc-200 font-bold mb-2">
             Director's Sanctum
           </h2>
-          <p
-            className="text-sm text-zinc-400 p-4">
-            You put your shit here, and we'll make it into a movie.
+          <p className="text-sm text-zinc-400">
+            Define your narrative and pre-create entities for the Visual Bible
           </p>
         </div>
 
-        <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-          <div className="flex-1 flex flex-col">
-            <label
-              className="text-sm text-zinc-200 font-medium mb-2">
-              Narrative
-            </label>
-            <div className="rim-spinner"></div>
-            <textarea
-              value={narrative}
-              onChange={(e) => setNarrative(e.target.value)}
-              placeholder="Paste your story, novel, screenplay, or narrative here..."
-              className={`flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-light shadow-sm transition-all focus:shadow-inner focus:outline-none resize-none 
-                ${narrative
-                  ? "not-italic"
-                  : "italic text-gray-400"
-                }`}
-            />
-          </div>
+        {/* Grid Layout: Narrative | Entity Creation */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
 
-          <div className="flex flex-col">
-            <label
-              className="text-sm font-medium mb-2">
-              Style Notes (Optional)
-            </label>
-            <textarea
-              value={styleNotes}
-              onChange={(e) => setStyleNotes(e.target.value)}
-              placeholder="Style notes . . ."
-              className={`border border-slate-200 rounded-xl px-3 py-2 text-xs font-light italic shadow-sm transition-all focus:shadow-inner focus:outline-none resize-none h-24 
-                ${styleNotes
-                  ? "not-italic"
-                  : "italic text-gray-400"
-                }`}
-            />
-          </div>
+          {/* Narrative */}
+          <div className="flex flex-col gap-4">
+            <div className="flex-1 flex flex-col">
+              <label className="text-sm text-slate-100 font-medium mb-2">
+                Narrative *
+              </label>
+              <div className="glass-panel h-full flex-1">
+                <textarea
+                  value={narrative}
+                  onChange={(e) => setNarrative(e.target.value)}
+                  placeholder="Paste your story, novel, screenplay, or narrative here..."
+                  className={`flex-1 h-full w-full inset-4 rounded-xl px-4 py-4 text-xs font-light shadow-sm transition-all focus:shadow-inner focus:outline-none resize-none 
+                  ${narrative ? "not-italic text-slate-100" : "italic text-slate-400"}`}
+                />
+              </div>
+            </div>
 
-          <button
-            onClick={handleGenerateVisualBible}
-            disabled={!narrative.trim() || isGenerating}
-            className="w-full bg-slate-600 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Film className="w-3 h-3 text-slate-200" />
-            {isGenerating
-              ? "Generating Visual Bible..."
-              : "Generate Visual Bible"}
-          </button>
+            {/* Style Notes */}
+            <div className="flex flex-col">
+              <label className="text-sm text-slate-100 font-medium pl-2 mb-2">
+                Style Notes (Optional)
+              </label>
+              <div className="glass-panel">
+                <textarea
+                  value={styleNotes}
+                  onChange={(e) => setStyleNotes(e.target.value)}
+                  placeholder="Style notes . . ."
+                  className={`rounded-xl px-4 py-4 text-xs font-light italic shadow-sm transition-all focus:shadow-inner focus:outline-none resize-none h-24 
+                  ${styleNotes ? "not-italic" : "italic text-gray-400"}`}
+                />
+              </div>
+            </div>
+
+            {/* Generate Buttons */}
+            <div className="flex flex-row justify-around gap-2">
+              <button
+                onClick={handleGenerateVisualBible}
+                disabled={!narrative.trim() || isGenerating}
+                className="w-full bg-slate-600 text-white px-6 py-3 shadow-inner shadow-slate-700 rounded-3xl font-medium flex items-center justify-center gap-2 hover:bg-slate-800 disabled:opacity-80 disabled:cursor-not-allowed"
+              >
+                <Film className="w-3 h-3 text-slate-200" />
+                {isGenerating
+                  ? "Generating Visual Bible..."
+                  : preCreatedEntities.length > 0
+                    ? `Generate Visual Bible (${preCreatedEntities.length} pre-defined)`
+                    : "Generate Visual Bible"}
+              </button>
+
+              <button
+                onClick={handleGenerateBeats}
+                disabled={!narrative.trim() || isGenerating}
+                className="w-full bg-slate-100 text-slate-900 shadow-inner shadow-slate-50 px-6 py-3 rounded-3xl font-medium flex items-center justify-center gap-2 hover:bg-slate-200 disabled:opacity-80 disabled:cursor-not-allowed"
+              >
+                <Film className="w-3 h-3" />
+                {isGenerating
+                  ? "Generating Beats..."
+                  : "Generate Beats"}
+              </button>
+            </div>
+
+            {/* Right Column: Entity Creation */}
+            <div>
+              <EntityCreationPanel
+                entities={preCreatedEntities}
+                onEntitiesChange={onPreCreatedEntitiesChange}
+              />
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (phase === "decomposition") {
-    const [activeTab, setActiveTab] = useState<"codex" | "turnarounds">("codex");
 
+  //**********************//
+  //    VISUAL BIBLE      //
+  //**********************//
+  if (phase === "decomposition") {
     return (
       <div className="flex flex-col h-full w-full border-r border-white/10 bg-white/5 backdrop-blur-sm translatez-0">
 
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex-shrink-0">
-          <h2 className="text-2xl text-zinc-200 font-bold mb-2">Visual Bible</h2>
+          <h2 className="text-3xl text-zinc-200 font-bold mb-2">Visual Bible</h2>
           <p
             className="text-sm text-zinc-400 mb-4">
             Your comprehensive reference sheet for visual consistency

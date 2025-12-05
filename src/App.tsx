@@ -7,9 +7,12 @@ import TimelineView from './components/Timeline/TimelineView';
 import { useMonstrosityEngine } from './hooks/useMonstrosityEngine';
 import { chatWithDirector } from './services/gemini';
 import BackgroundEffect from './background-effect';
+import { type PreCreatedEntity } from './types/preEntity';
+import { EnhancedLogPanel } from './components/EnhancedLogPanel';
 
 function App() {
   const [activeView, setActiveView] = useState<'planning' | 'production'>('planning');
+  const [preCreatedEntities, setPreCreatedEntities] = useState<PreCreatedEntity[]>([]);
 
   const {
     visualBible,
@@ -24,6 +27,7 @@ function App() {
     updateVisualBible,
     generateVisualBible,
     generateScenes,
+    generateBeats, // NEW: Beat-based decomposition
     addMessage,
     startPipeline,
     pausePipeline,
@@ -47,6 +51,15 @@ function App() {
       await generateScenes(narrative);
     } catch (error) {
       console.error('Scene generation failed:', error);
+    }
+  };
+
+  const handleGenerateBeats = async (narrative: string) => {
+    try {
+      const beats = await generateBeats(narrative);
+      console.log('[App] Generated beats:', beats);
+    } catch (error) {
+      console.error('Beat generation failed:', error);
     }
   };
 
@@ -93,122 +106,88 @@ function App() {
     }
   };
 
-  const activeConversation = conversations.find(c => c.id === activeConversationId);
-
-  if (isLoading) { // TODO: Replace with loading screen
-    return (
-      <div className="h-screen w-screen flex items-center justify-center">
-        Loading Windows Movie Maker...
-      </div>
-    );
-  }
+  const activeConversation = conversations.find(
+    (c) => c.id === activeConversationId
+  );
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden relative">
+    <div className="flex flex-1 h-screen w-screen overflow-hidden relative">
       <BackgroundEffect />
 
       {/* Sidebar */}
       <div className="flex flex-col h-full justify-center">
-        <Sidebar currentPhase={currentPhase} setCurrentPhase={setCurrentPhase} />
-      </div>
-
-      {/* Pipeline Controls (Production Phase) */}
-      {currentPhase === 'production' && (
-        <div className="p-4 border-b border-black/5 space-y-2">
-          {pipelineStatus === 'idle' && (
-            <button
-              onClick={startPipeline}
-              disabled={scenes.length === 0}
-              className="w-full bg-black text-white px-4 py-2 rounded font-medium flex items-center justify-center gap-2 hover:bg-black/80 disabled:opacity-50"
-            >
-              <Play className="w-4 h-4" />
-              Start Production
-            </button>
-          )}
-
-          {pipelineStatus === 'running' && (
-            <button
-              onClick={pausePipeline}
-              className="w-full bg-red-600 text-white px-4 py-2 rounded font-medium flex items-center justify-center gap-2 hover:bg-red-700"
-            >
-              <Pause className="w-4 h-4" />
-              Pause Pipeline
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Phase-specific Sidebar Content */}
-      {(currentPhase === 'planning' || currentPhase === 'decomposition') && (
-        <DirectorSanctum
-          visualBible={visualBible}
-          messages={activeConversation?.messages || []}
-          onGenerateVisualBible={handleGenerateVisualBible}
-          onGenerateScenes={handleGenerateScenes}
-          onSendMessage={handleSendMessage}
-          onUpdateBible={updateVisualBible}
-          phase={currentPhase}
+        <Sidebar
+          currentPhase={currentPhase}
+          setCurrentPhase={setCurrentPhase}
         />
-      )}
-
-      {currentPhase === 'production' && (
-        <div className="p-4">
-          <div className="glass-panel p-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
-              <Settings className="w-3 h-3" />
-              Configuration
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div>
-                <span className="text-[var(--text-secondary)]">Scenes:</span> {scenes.length}
-              </div>
-              <div>
-                <span className="text-[var(--text-secondary)]">Granularity:</span> {visualBible.granularityLevel}
-              </div>
-              <div>
-                <span className="text-[var(--text-secondary)]">Max Retries:</span> {visualBible.maxImageRetries}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* System Logs */}
-      <div className="overflow-hidden glass-panel flex fixed bottom-0 left-1/2 transform -translate-x-1/2 z-50 w-64 h-24 flex-col p-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider mb-2">System Logs</h3>
-        <div className="flex-1 overflow-y-auto space-y-1 text-xs font-mono">
-          {systemLogs.slice(-20).map((log, i) => (
-            <div
-              key={i}
-              className={`
-                  ${log.type === 'error' ? 'text-red-600' : ''}
-                  ${log.type === 'success' ? 'text-green-600' : ''}
-                  ${log.type === 'warning' ? 'text-orange-600' : ''}
-                  ${log.type === 'info' ? 'text-[var(--text-secondary)]' : ''}
-                  `}
-            >
-              [{new Date(log.timestamp).toLocaleTimeString()}] {log.message}
-            </div>
-          ))}
-        </div>
       </div>
 
+
+      {/* Enhanced Log Panel */}
+      <EnhancedLogPanel />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="glass-panel border-b border-white/50 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold">{visualBible.name}</h2>
-            <p className="text-xs text-[var(--text-secondary)]">
-              {scenes.length} scenes • {visualBible.colorPalette.mood} mood
-            </p>
-          </div>
-        </header>
 
-        {/* Timeline */}
+        {/* STEPS 1 & 2 */}
+        {/* Planning and Decomposition phases */}
+        {(currentPhase === "planning" || currentPhase === "decomposition") && (
+          <DirectorSanctum
+            visualBible={visualBible}
+            messages={activeConversation?.messages || []}
+            onGenerateVisualBible={handleGenerateVisualBible}
+            onGenerateScenes={handleGenerateScenes}
+            onGenerateBeats={handleGenerateBeats}
+            onSendMessage={handleSendMessage}
+            onUpdateBible={updateVisualBible}
+            phase={currentPhase}
+            preCreatedEntities={preCreatedEntities}
+            onPreCreatedEntitiesChange={setPreCreatedEntities}
+          />
+        )}
+
+
+        {/* STEP 3: Production phase (Timeline) */}
+        {currentPhase === "production" && (
+          <div className="p-4 space-y-2">
+            <div className="h-12 glass-panel flex items-center px-6 gap-6 text-sm font-mono text-[var(--text-secondary)] z-10">
+              <span>TOTAL SCENES: {scenes.length}</span>
+              <span>GENERATED: {scenes.filter(s => s.overallStatus === 'complete').length}</span>
+              <span>PENDING: {scenes.filter(s => s.overallStatus === 'pending').length}</span>
+              <div className="ml-auto flex items-center">
+                {/*Start/Pause button*/}
+                {pipelineStatus === "idle" && (
+                  <button
+                    onClick={startPipeline}
+                    disabled={scenes.length === 0}
+                    className="bg-slate-800 border-slate-700 h-8 w-auto px-2 py-4 !text-white !text-md font-mono white-lamp flex items-center gap-2"
+                  >
+                    <Play className="mix-blend-screen w-6 h-6" />
+                    <span className="text-md font-mono">
+                      Start Production
+                    </span>
+                  </button>
+                )}
+
+                {pipelineStatus === "running" && (
+                  <button
+                    onClick={pausePipeline}
+                    className="w-full bg-red-600 text-white px-2 py-4 rounded font-medium flex items-center justify-center gap-2 hover:bg-red-700"
+                  >
+                    <Pause className="w-4 h-4" />
+                    Pause Pipeline
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+        )}
+
+
+        {/* Timeline Cards */}
         <div className="flex-1 overflow-hidden">
-          {currentPhase === 'production' || currentPhase === 'review' ? (
+          {currentPhase === "production" || currentPhase === "review" ? (
             <TimelineView
               scenes={scenes}
               onRegenerateScene={regenerateScene}
@@ -221,8 +200,10 @@ function App() {
               <div className="text-center">
                 <Film className="w-16 h-16 mx-auto mb-4 opacity-30" />
                 <p className="text-sm">
-                  {currentPhase === 'planning' && 'Paste your narrative to begin'}
-                  {currentPhase === 'decomposition' && 'Review Visual Bible and generate scenes'}
+                  {currentPhase === "planning" &&
+                    "Paste your narrative to begin"}
+                  {currentPhase === "decomposition" &&
+                    "Review Visual Bible and generate scenes"}
                 </p>
               </div>
             </div>

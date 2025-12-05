@@ -1,4 +1,9 @@
 import { type VisualBible, type SceneNode, type ChatMessage } from "../types";
+import { type PreCreatedEntity } from "../types/preEntity";
+import { logger } from "./logger";
+
+// Re-export beat decomposition from separate module
+export { decomposeIntoBeats } from "./beatDecomposition";
 
 // Read from .env.local (Vite auto-loads as import.meta.env.VITE_*)
 // But user has it as GEMINI_API_KEY, so we need a workaround
@@ -8,7 +13,7 @@ const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 // Models (use 2.5 Pro as fallback if 3.0 isn't available yet)
 // Models - ALL GEMINI 3 PRO PREVIEW (The "Monstrosity" Standard)
-const MODEL_TEXT = "gemini-3-pro-preview";
+const MODEL_TEXT = "gemini-2.5-pro";
 const MODEL_VISION = "gemini-3-pro-image-preview"; // Nano Banana
 const MODEL_VIDEO = "veo-3.1-generate-preview";
 
@@ -19,7 +24,7 @@ const THINKING_LEVEL = "high"; // "No Thoughts, Head Empty" is forbidden
 const fetchWithTimeout = async (
   url: string,
   options: RequestInit,
-  timeoutMs: number = 60000
+  timeoutMs: number = 120000
 ) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -50,136 +55,327 @@ const getHeaders = () => ({
 
 export const analyzeNarrative = async (
   narrative: string,
-  styleNotes: string
+  styleNotes: string,
+  preCreatedEntities?: PreCreatedEntity[]
 ): Promise<Partial<VisualBible>> => {
   if (!API_KEY)
     throw new Error("Missing GEMINI_API_KEY - check your .env.local file");
 
-  const systemPrompt = `You are an expert film director and visual storyteller. Analyze the following narrative and extract a comprehensive Visual Bible for video generation.
+  const GOD_TIER_VISUAL_BIBLE_PROMPT = `You are the Master Cinematographer and Visual Bible Architect for a narrative-to-video AI pipeline.
 
-Extract and structure the following elements as JSON:
+YOUR MISSION: Extract and structure a comprehensive Visual Bible from the provided narrative that will serve as the CANONICAL REFERENCE for ALL subsequent image and video generation in this pipeline.
 
-1. **narrativeThemes**: Array of strings (e.g., ["isolation", "redemption", "dystopia"])
-2. **keyMotifs**: Array of objects with { description: string, visualExamples: string[] }
-3. **characters**: Object mapping character IDs to detailed descriptions. EACH character MUST have:
-   - name: string
-   - description: string
-   - keyFeatures: ARRAY of strings (e.g., ["scar on left cheek", "always wears red scarf"])
-   - emotionalArc: string
-   - appearance: {
-       hair: string,
-       eyes: string,
-       build: string,
-       attire: string,
-       distinguishingMarks: string,
-       visualReferences: string[] (optional)
-     }
-4. **settings**: Object mapping setting IDs to:
-   - name: string
-   - locationDescription: string
-   - timePeriod: string
-   - atmosphere: string
-   - keyVisualElements: ARRAY of strings
-   - propLibrary: object mapping prop names to descriptions
-   - visualReferences: string[] (optional)
-5. **cinematography**: Object with:
-   - lensType: string
-   - filmGrain: string
-   - lightingStyle: string
-   - cameraMovement: string
-   - cameraAngles: string
-6. **colorPalette**: Object with:
-   - mood: string
-   - hexCodes: ARRAY of hex color strings (e.g., ["#1a1a2e", "#16213e", "#0f3460"])
-   - description: string
+CRITICAL CONTEXT: 
+This Visual Bible is the MAKE-OR-BREAK foundation of the entire system. Every character description, every setting detail, every cinematographic choice you define here will be used to generate hundreds of images and videos. Consistency failures here cascade catastrophically. BE EXHAUSTIVE. BE SPECIFIC. BE CONSISTENT.
 
-CRITICAL: Ensure all fields marked as ARRAY are actual JSON arrays, not strings or other types.
+INPUT:
+- Full Narrative Text
+- User's Style Notes (optional additional creative direction)
 
-Example structure:
+OUTPUT STRUCTURE (JSON):
 {
-  "narrativeThemes": ["isolation", "survival"],
-  "keyMotifs": [{ "description": "broken glass", "visualExamples": ["shattered windows", "cracked mirrors"] }],
+  "narrativeThemes": [
+    // 3-5 core themes (e.g., "isolation vs connection", "redemption through sacrifice")
+  ],
+  
+  "keyMotifs": [
+    {
+      "description": "recurring visual symbol or element",
+      "visualExamples": ["specific manifestations of this motif in the narrative"]
+    }
+  ],
+  
   "characters": {
-    "char_1": {
-      "name": "John Doe",
-      "description": "A weary detective",
-      "keyFeatures": ["grey hair", "worn leather jacket", "perpetual stubble"],
-      "emotionalArc": "redemption through truth",
+    "[characterId]": {
+      "name": string,
+      "description": "comprehensive 2-3 sentence character overview",
+      "roleInNarrative": "protagonist | antagonist | supporting | tertiary",
+      
+      // ULTRA-SPECIFIC PHYSICAL DESCRIPTION
+      // Think: if a forensic sketch artist needed to draw this person from your description alone
+      "coreVisualIdentity": {
+        "facialStructure": "DETAILED: face shape, bone structure, asymmetries, scars, distinguishing marks",
+        "eyes": "DETAILED: exact color (not just 'blue' - 'steel blue with amber flecks'), shape, intensity",
+        "hair": "DETAILED: texture, length, style, color (use specific terms like 'ash blonde' not 'blonde'), how it moves",
+        "build": "DETAILED: height, build, posture, gait, how they occupy space",
+        "signatureElements": [
+          "Specific items ALWAYS associated with this character",
+          "e.g., 'worn leather jacket with brass zipper, never fully zipped'",
+          "e.g., 'silver ring on right index finger, thin band with microscopic engraving'"
+        ],
+        "bodyLanguage": "How they move, gesture, express emotion physically"
+      },
+      
       "appearance": {
-        "hair": "salt and pepper, medium length",
-        "eyes": "steel blue",
-        "build": "athletic but weathered",
-        "attire": "brown leather jacket, dark jeans",
-        "distinguishingMarks": "scar above right eyebrow"
-      }
+        "attire": "DEFAULT outfit description (what they wear in most scenes)",
+        "distinguishingMarks": "Tattoos, scars, birthmarks, anything permanent",
+        "ageApparent": "How old they appear (may differ from actual age)"
+      },
+      
+      "emotionalArc": "Brief description of their emotional journey through the narrative",
+      
+      // Extract key emotional states they experience
+      "keyEmotionalBeats": [
+        {
+          "emotion": "specific emotion at a narrative point",
+          "facialExpression": "how this manifests facially",
+          "posture": "how this manifests in body language"
+        }
+      ]
     }
   },
+  
   "settings": {
-    "setting_1": {
-      "name": "Downtown Precinct",
-      "locationDescription": "gritty 1980s police station",
-      "timePeriod": "1985",
-      "atmosphere": "fluorescent lit, cigarette smoke haze",
-      "keyVisualElements": ["metal filing cabinets", "cork boards with photos", "rotary phones"],
-      "propLibrary": { "desk_lamp": "green banker's lamp", "typewriter": "IBM Selectric" }
+    "[settingId]": {
+      "name": string,
+      "locationType": "interior | exterior | mixed",
+      
+      // MASTER VISUAL DESCRIPTION
+      // Imagine you're describing this to a production designer who needs to build the set
+      "masterDescription": "Comprehensive 3-4 sentence description covering layout, materials, colors, textures, scale, mood",
+      
+      "locationDescription": "Geographic/contextual location info",
+      "timePeriod": "When this setting exists (contemporary, 1920s, futuristic, etc.)",
+      
+      "atmosphere": "The FEELING of this place (oppressive, serene, chaotic, intimate, etc.)",
+      
+      "lightingConditions": {
+        "primarySource": "natural sunlight | artificial | mixed",
+        "timeOfDay": "dawn | morning | midday | afternoon | dusk | night",
+        "weatherCondition": "clear | overcast | rainy | foggy | etc.",
+        "artificialLighting": "description of any lamps, fixtures, ambient glow",
+        "mood": "warm | cool | neutral | dramatic | soft"
+      },
+      
+      "keyVisualElements": [
+        "Specific, memorable details that make this setting unique",
+        "e.g., 'Art deco chandelier with missing crystals, casts fragmented light'",
+        "e.g., 'Exposed brick wall, northeastern corner, water-stained from old leak'"
+      ],
+      
+      "propLibrary": {
+        "[propId]": "description of recurring prop in this setting"
+      },
+      
+      "soundscape": "Ambient sounds characteristic of this setting (for video audio generation)"
     }
   },
-  "cinematography": {
-    "lensType": "35mm prime",
-    "filmGrain": "heavy grain, 800 ISO look",
-    "lightingStyle": "high contrast noir",
-    "cameraMovement": "handheld, documentary feel",
-    "cameraAngles": "dutch angles, low shots"
+  
+  "props": {
+    "[propId]": {
+      "name": string,
+      "description": "Detailed visual description",
+      "significance": "Why this prop matters narratively",
+      "firstAppearance": "Where in narrative this prop is introduced",
+      "associatedCharacters": ["character IDs who interact with this prop"]
+    }
   },
+  
+  "cinematography": {
+    "overallStyle": "e.g., 'gritty realism', 'dreamlike surrealism', 'classical Hollywood'",
+    
+    "lensChoices": {
+      "establishing": "lens type for wide/establishing shots",
+      "dialogue": "lens type for conversation scenes",
+      "action": "lens type for action/movement scenes",
+      "intimate": "lens type for close-ups/emotional beats"
+    },
+    
+    "filmGrain": "none | subtle 35mm | pronounced 16mm | digital clean",
+    "lightingStyle": "naturalistic | high-contrast noir | soft romantic | etc.",
+    
+    "cameraMovement": {
+      "tensionScenes": "handheld, shaky, unstable",
+      "contemplativeScenes": "slow dolly, smooth, deliberate",
+      "actionScenes": "dynamic tracking, whip pans, kinetic",
+      "dialogueScenes": "static, slow push-in, subtle reframing"
+    },
+    
+    "cameraAngles": {
+      "powerDynamics": "use of low/high angles to show dominance/submission",
+      "defaultNeutral": "eye-level, straight-on",
+      "emotionalIsolation": "dutch angle, off-center framing"
+    },
+    
+    "colorGrading": {
+      "lutDescription": "Overall color treatment (e.g., 'warm amber highlights with teal shadows, slightly desaturated')",
+      "moodDescription": "Emotional color story (e.g., 'hopeful yet melancholic')",
+      "specificColorRules": [
+        "e.g., 'warm tones dominate happy memories, cool tones for present reality'",
+        "e.g., 'gradual desaturation as protagonist loses hope'"
+      ]
+    }
+  },
+  
   "colorPalette": {
-    "mood": "neo-noir darkness",
-    "hexCodes": ["#0a0a0a", "#1a1a2e", "#c4a747"],
-    "description": "deep blacks with amber highlights"
+    "mood": "overall color mood for the story",
+    "hexCodes": ["#hex", "#hex", "#hex"], // 5-8 dominant colors
+    "description": "How these colors relate to themes/emotions"
   }
 }
 
-**Narrative:**
+INSTRUCTIONS:
+
+1. READ THE ENTIRE NARRATIVE CAREFULLY.
+
+2. IDENTIFY ALL CHARACTERS:
+   - Extract EVERY named character
+   - Create character IDs: lowercase, underscore-separated (e.g., "steven_parkland", "dr_pfizer")
+   - For each, write the most SPECIFIC physical description possible
+   - Think forensic detail: what would make this person recognizable in a police lineup?
+   - DO NOT use vague terms. "Blonde hair" → "honey blonde hair, shoulder-length, slight natural wave, tends to fall over right eye"
+
+3. IDENTIFY ALL SETTINGS:
+   - Extract every distinct location where narrative events occur
+   - Create setting IDs: lowercase, underscore-separated (e.g., "conference_room_novavax_hq")
+   - Describe comprehensively: architecture, furnishings, lighting, textures, spatial layout
+   - Include sensory details: "smells faintly of old coffee and printer toner"
+
+4. IDENTIFY ALL SIGNIFICANT PROPS:
+   - Objects that recur or have narrative weight
+   - Create prop IDs: lowercase, underscore-separated (e.g., "pfizers_research_folder")
+   - Visual specificity: "manila folder, slightly warped from humidity, coffee ring on top right corner"
+
+5. DEFINE CINEMATOGRAPHY:
+   - Infer from narrative tone what cinematic style fits
+   - Be specific about lens choices, not generic
+   - Explain color grading in precise terms (LUT descriptions, specific color relationships)
+
+6. EXTRACT THEMES & MOTIFS:
+   - What visual symbols recur?
+   - What thematic elements could translate visually?
+   - How can color/lighting support these themes?
+
+QUALITY CHECKS:
+- Can someone generate a consistent image of each character across 100 frames using ONLY your description? If no, ADD MORE DETAIL.
+- Can someone build a 3D model of each setting using ONLY your description? If no, ADD MORE DETAIL.
+- Is every important narrative element visually represented? If no, ADD IT.
+
+THINK STEP BY STEP. BE EXHAUSTIVE. THIS IS THE FOUNDATION OF EVERYTHING.
+
+NOW: Generate the Visual Bible for the following narrative.
+
+NARRATIVE:
 ${narrative}
 
-**Style Notes:**
+${
+  styleNotes
+    ? `
+USER STYLE NOTES:
 ${styleNotes}
+`
+    : ""
+}
 
-Respond ONLY with valid JSON matching this structure. Ensure ALL array fields are proper JSON arrays.`;
+Respond with valid JSON ONLY.`;
 
-  console.log("[Gemini] Calling analyzeNarrative with model:", MODEL_TEXT);
+  const startTime = Date.now();
+  logger.generation("Starting Visual Bible generation", {
+    narrativeLength: narrative.length,
+    model: MODEL_TEXT,
+    hasPreEntities: !!preCreatedEntities?.length,
+  });
+
+  console.log("[Gemini] Calling GOD-TIER Visual Bible generation");
   console.log("[Gemini] Narrative length:", narrative.length, "chars");
+  console.log("[Gemini] Using model:", MODEL_TEXT);
 
-  const response = await fetchWithTimeout(
-    `${BASE_URL}/${MODEL_TEXT}:generateContent`,
-    {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt }] }],
-        generationConfig: {
-          response_mime_type: "application/json",
-          thinking_config: { thinking_level: THINKING_LEVEL }, // FORCE REASONING
-        },
-      }),
-    }
-  );
+  const requestBody: any = {
+    contents: [{ parts: [{ text: GOD_TIER_VISUAL_BIBLE_PROMPT }] }],
+  };
 
-  if (!response.ok) {
-    const err = await response.json();
-    console.error("[Gemini] API Error:", err);
-    throw new Error(err.error?.message || "Visual Bible generation failed");
-  }
+  // Note: generationConfig removed for 2.5 Pro compatibility
+  // When you switch back to 3.0 Pro, add:
+  // generationConfig: {
+  //   response_mime_type: "application/json",
+  //   thinking_config: { thinking_level: THINKING_LEVEL }
+  // }
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) throw new Error("No response from Gemini");
+  console.log("[Gemini] Request config:", JSON.stringify(requestBody));
 
   try {
-    return JSON.parse(text);
-  } catch (e) {
-    console.error("Failed to parse Visual Bible JSON:", text);
-    throw new Error("Invalid JSON response from Gemini");
+    const response = await fetchWithTimeout(
+      `${BASE_URL}/${MODEL_TEXT}:generateContent`,
+      {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json();
+      console.error(
+        "[Gemini] API Error Response:",
+        JSON.stringify(err, null, 2)
+      );
+      throw new Error(err.error?.message || JSON.stringify(err));
+    }
+
+    const data = await response.json();
+    console.log("[Gemini] Response candidates:", data.candidates?.length);
+    console.log("[Gemini] Full response:", JSON.stringify(data, null, 2));
+
+    // Check for safety/blocking
+    if (data.candidates?.[0]?.finishReason === "SAFETY") {
+      console.error(
+        "[Gemini] Response blocked by safety filters:",
+        data.candidates[0]
+      );
+      throw new Error("Response blocked by safety filters");
+    }
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      console.error("[Gemini] No text in response");
+      throw new Error("No response from Gemini - check console for details");
+    }
+
+    console.log("[Gemini] Response length:", text.length, "chars");
+
+    try {
+      // Try to extract JSON from markdown code blocks if present
+      let jsonText = text;
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[1];
+        console.log("[Gemini] Extracted JSON from code block");
+      }
+
+      const parsed = JSON.parse(jsonText);
+
+      // Initialize empty props if not present
+      if (!parsed.props) {
+        parsed.props = {};
+      }
+
+      const duration = Date.now() - startTime;
+      logger.success("Visual Bible generated", {
+        duration: `${duration}ms`,
+        characters: Object.keys(parsed.characters || {}).length,
+        settings: Object.keys(parsed.settings || {}).length,
+        props: Object.keys(parsed.props || {}).length,
+      });
+
+      return parsed;
+    } catch (e) {
+      console.error(
+        "Failed to parse Visual Bible JSON:",
+        text.substring(0, 500)
+      );
+      logger.error("Failed to parse Visual Bible JSON", {
+        error: e,
+        responseText: text.substring(0, 500),
+      });
+      throw new Error("Invalid JSON response from Gemini - check console");
+    }
+  } catch (error: any) {
+    logger.error("Visual Bible generation failed", error);
+    console.error("[Gemini] Exception during API call:", error);
+    console.error("[Gemini] Error message:", error.message);
+    console.error("[Gemini] Error stack:", error.stack);
+    throw error;
   }
 };
 
@@ -239,7 +435,7 @@ Be exhaustive and precise in the prompts.`;
       contents: [{ parts: [{ text: systemPrompt }] }],
       generationConfig: {
         response_mime_type: "application/json",
-        thinking_config: { thinking_level: THINKING_LEVEL },
+        //        thinking_config: { thinking_level: THINKING_LEVEL },
       },
     }),
   });
@@ -370,7 +566,7 @@ export const chatWithDirector = async (
         },
       ],
       generationConfig: {
-        thinking_config: { thinking_level: THINKING_LEVEL },
+        //        thinking_config: { thinking_level: THINKING_LEVEL },
       },
     }),
   });
@@ -431,6 +627,17 @@ export const generateSceneImage = async (
   thoughtSignature?: string
 ): Promise<{ base64: string; seed?: number; thoughtSignature?: string }> => {
   if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
+
+  const startTime = Date.now();
+  logger.generation(
+    inputImage ? "Editing scene image" : "Generating scene image",
+    {
+      model: MODEL_VISION,
+      aspectRatio,
+      hasInput: !!inputImage,
+      hasContext: !!contextStack.referenceImages,
+    }
+  );
 
   // Construct the System Prompt
   const systemPrompt = `
@@ -779,6 +986,12 @@ export const generateItemReference = async (
 ): Promise<{ base64: string; thoughtSignature?: string }> => {
   if (!API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
+  const startTime = Date.now();
+  logger.generation("Generating item reference image", {
+    model: MODEL_VISION,
+    referenceCount: referenceImages.length,
+  });
+
   const parts: any[] = [{ text: prompt }];
 
   // Attach reference images if provided
@@ -812,16 +1025,28 @@ export const generateItemReference = async (
   }
 
   const data = await response.json();
+
+  // Check for both camelCase and snake_case
   const imagePart = data.candidates?.[0]?.content?.parts?.find(
-    (p: any) => p.inline_data
+    (p: any) => p.inlineData || p.inline_data
   );
 
   if (!imagePart) {
+    console.error(
+      "[Vision] No image part. Response:",
+      JSON.stringify(data).substring(0, 300)
+    );
     throw new Error("No image generated in response");
   }
 
+  // Support both naming conventions
+  const imageData = imagePart.inlineData || imagePart.inline_data;
+
+  const duration = Date.now() - startTime;
+  logger.success("Item reference generated", { duration: `${duration}ms` });
+
   return {
-    base64: imagePart.inline_data.data,
-    thoughtSignature: imagePart.thoughtSignature,
+    base64: imageData.data,
+    thoughtSignature: imagePart.thoughtSignature || imageData.thoughtSignature,
   };
 };

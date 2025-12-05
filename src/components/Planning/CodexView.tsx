@@ -127,9 +127,9 @@ const CodexView: React.FC<CodexViewProps> = ({
                   </div>
 
                   {/* 3. Sheen  (NOT EVEN FUCKING USING THIS RIGHT NOW BUT KEEPING FOR LATER*/}
-                  {/*<div className="glass-sheen">*/}
-                  {/*<div className="sheen-wiper" />*/}
-                  {/*</div>*/}
+                  {/*<div className="glass-sheen">
+                    <div className="sheen-wiper" />
+                  </div>*/}
 
                   {/* 4. Flares THESE ARE LIT JUST FUCKING LINES */}
                   {/*<div className="flare-top-left" /> */}
@@ -202,9 +202,9 @@ const CodexView: React.FC<CodexViewProps> = ({
                         </p>
 
                         {/* Key Features Tags */}
-                        {char.keyFeatures.length > 0 && (
+                        {(char.coreVisualIdentity?.signatureElements?.length ?? 0) > 0 && (
                           <div className="flex flex-wrap gap-2">
-                            {char.keyFeatures.slice(0, 4).map((feature, i) => (
+                            {char.coreVisualIdentity.signatureElements.slice(0, 4).map((feature, i) => (
                               <span key={i} className="px-2 py-1 rounded-lg bg-slate-50/80 shadow-[inset_0px_0px_3px_-1px_#00005050] text-[10px] text-slate-400 uppercase tracking-wide">
                                 {feature}
                               </span>
@@ -225,7 +225,8 @@ const CodexView: React.FC<CodexViewProps> = ({
               </p>
             )}
           </div>
-        )}
+        )
+        }
       </div>
 
       {/* Settings */}
@@ -385,7 +386,9 @@ const CodexView: React.FC<CodexViewProps> = ({
             <div className="p-4 rounded-xl bg-white/5 border border-white/10 shadow-sm text-xs space-y-2 text-gray-300">
               <div>
                 <span className="font-bold text-gray-400 uppercase tracking-wider text-[10px]">Lens:</span>{" "}
-                {visualBible.cinematography.lensType}
+                {(visualBible.cinematography as any).lensType ||
+                  visualBible.cinematography.lensChoices?.dialogue ||
+                  'Standard'}
               </div>
               <div>
                 <span className="font-bold text-gray-400 uppercase tracking-wider text-[10px]">Film Grain:</span>{" "}
@@ -397,11 +400,15 @@ const CodexView: React.FC<CodexViewProps> = ({
               </div>
               <div>
                 <span className="font-bold text-gray-400 uppercase tracking-wider text-[10px]">Movement:</span>{" "}
-                {visualBible.cinematography.cameraMovement}
+                {(visualBible.cinematography as any).cameraMovement?.tensionScenes ||
+                  (visualBible.cinematography as any).cameraMovement ||
+                  'Dynamic'}
               </div>
               <div>
                 <span className="font-bold text-gray-400 uppercase tracking-wider text-[10px]">Angles:</span>{" "}
-                {visualBible.cinematography.cameraAngles}
+                {(visualBible.cinematography as any).cameraAngles?.defaultNeutral ||
+                  (visualBible.cinematography as any).cameraAngles ||
+                  'Eye Level'}
               </div>
             </div>
           </div>

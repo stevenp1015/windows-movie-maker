@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 import {
   analyzeNarrative,
   decomposeIntoScenes,
+  decomposeIntoBeats, // NEW: Beat-based decomposition
   generateSceneImage,
   chatWithDirector,
 } from "../services/gemini";
@@ -28,12 +29,33 @@ const DEFAULT_BIBLE: VisualBible = {
   keyMotifs: [],
   characters: {},
   settings: {},
+  props: {},
   cinematography: {
-    lensType: "Standard",
-    filmGrain: "None",
+    overallStyle: "Naturalistic",
+    lensChoices: {
+      establishing: "Wide angle",
+      dialogue: "50mm prime",
+      action: "Dynamic zoom",
+      intimate: "85mm portrait",
+    },
+    filmGrain: "none",
     lightingStyle: "Natural",
-    cameraMovement: "Static",
-    cameraAngles: "Eye Level",
+    cameraMovement: {
+      tensionScenes: "handheld, shaky",
+      contemplativeScenes: "slow dolly, smooth",
+      actionScenes: "dynamic tracking",
+      dialogueScenes: "static, subtle reframing",
+    },
+    cameraAngles: {
+      powerDynamics: "use of low/high angles",
+      defaultNeutral: "eye-level, straight-on",
+      emotionalIsolation: "dutch angle, off-center",
+    },
+    colorGrading: {
+      lutDescription: "Neutral, natural color balance",
+      moodDescription: "Balanced and realistic",
+      specificColorRules: [],
+    },
   },
   colorPalette: {
     mood: "Neutral",
@@ -233,6 +255,34 @@ export const useMonstrosityEngine = () => {
         return newScenes;
       } catch (error) {
         addLog(`Scene generation failed: ${error}`, "error");
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [visualBible, addLog]
+  );
+
+  // NEW: Generate beats from narrative (beat-based architecture)
+  const generateBeats = useCallback(
+    async (narrative: string) => {
+      try {
+        addLog("Breaking narrative into beats (new architecture)...", "info");
+        setIsLoading(true);
+
+        const beats = await decomposeIntoBeats(narrative, visualBible);
+
+        addLog(`Generated ${beats.length} narrative beats`, "success");
+
+        // TODO: Store beats in state once we have a beats state variable
+        console.log("[Hook] Generated beats:", beats);
+
+        // For now, keep the phase as planning until we fully implement beat workflow
+        // setCurrentPhase("production");
+
+        return beats;
+      } catch (error) {
+        addLog(`Beat generation failed: ${error}`, "error");
         throw error;
       } finally {
         setIsLoading(false);
@@ -493,9 +543,19 @@ export const useMonstrosityEngine = () => {
     // Visual Bible actions
     updateVisualBible,
     generateVisualBible,
+    generateScenes,
+    generateBeats, // NEW: Beat-based decomposition
+    // Placeholder for new pipeline actions
+    startProductionPipeline: () =>
+      addLog("Production pipeline started (placeholder)", "info"),
+    pauseProductionPipeline: () =>
+      addLog("Production pipeline paused (placeholder)", "info"),
+    resetProductionPipeline: () =>
+      addLog("Production pipeline reset (placeholder)", "info"),
+    sendDirectorMessage: (message: string) =>
+      addLog(`Director message: ${message} (placeholder)`, "info"),
 
     // Scene actions
-    generateScenes,
     addScene,
     updateScene,
     regenerateScene,
@@ -505,7 +565,6 @@ export const useMonstrosityEngine = () => {
 
     // Pipeline actions
     startPipeline,
-    pausePipeline,
 
     // Conversation actions
     addMessage,

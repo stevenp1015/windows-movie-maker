@@ -1,6 +1,9 @@
 import React from 'react';
-import { Film, Settings, Play, LucideScissors } from 'lucide-react';
+import { Film } from 'lucide-react';
 import { useMonstrosityEngine, type AppPhase } from '../hooks/useMonstrosityEngine';
+import BookIcon from './icons/BookIcon';
+import CharacterIcon from './icons/CharacterIcon';
+import FilmReelIcon from './icons/FilmReelIcon';
 
 interface SidebarProps {
     currentPhase: AppPhase;
@@ -32,34 +35,40 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPhase, setCurrentPhase }) => {
                 {/* Centered phase navigation buttons */}
                 <div className="flex-1 flex items-center -translate-y-6 justify-center">
                     <div className="p-2 space-y-3 w-full">
+
+                        {/* Planning Phase - Book Icon */}
                         <button
-                            className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${currentPhase === 'planning'
-                                ? 'bg-slate-800 text-white shadow-md'
-                                : 'bg-slate-300/10 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+                            className={`group sidebar-button ${currentPhase === 'planning'
+                                ? 'sidebar-button-active'
+                                : 'sidebar-button-inactive'
                                 }`}
                             onClick={() => setCurrentPhase('planning')}
                         >
-                            <Settings className="w-5 h-5" />
+                            <BookIcon size={32} />
                         </button>
+
+                        {/* Decomposition Phase - Character Icon */}
                         <button
-                            className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${currentPhase === 'decomposition'
-                                ? 'bg-slate-800/80 text-white shadow-md'
-                                : 'bg-slate-300/10 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+                            className={`group sidebar-button ${currentPhase === 'decomposition'
+                                ? 'sidebar-button-active'
+                                : 'sidebar-button-inactive'
                                 }`}
                             disabled={!visualBible.characters || Object.keys(visualBible.characters).length === 0}
                             onClick={() => setCurrentPhase('decomposition')}
                         >
-                            <LucideScissors className="w-5 h-5" />
+                            <CharacterIcon size={32} />
                         </button>
+
+                        {/* Production Phase - Film Reel Icon */}
                         <button
                             onClick={() => setCurrentPhase('production')}
-                            className={`group relative w-full flex items-center justify-center p-3 rounded-md transition-all duration-200 ${currentPhase === 'production'
-                                ? 'bg-slate-800 text-white shadow-md'
-                                : 'bg-slate-300/10 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+                            className={`group sidebar-button ${currentPhase === 'production'
+                                ? 'sidebar-button-active'
+                                : 'sidebar-button-inactive'
                                 }`}
                             disabled={scenes.length === 0}
                         >
-                            <Play className="w-5 h-5" />
+                            <FilmReelIcon size={32} />
                         </button>
                     </div>
                 </div>

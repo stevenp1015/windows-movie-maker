@@ -67,15 +67,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({
   return (
     <div className="h-full flex flex-col relative">
       {/* Toolbar / Stats */}
-      <div className="h-12 border-b border-white/50 bg-white/30 backdrop-blur-sm flex items-center px-6 gap-6 text-xs font-mono text-[var(--text-secondary)] z-10">
-        <span>TOTAL SCENES: {scenes.length}</span>
-        <span>GENERATED: {scenes.filter(s => s.overallStatus === 'complete').length}</span>
-        <span>PENDING: {scenes.filter(s => s.overallStatus === 'pending').length}</span>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[var(--accent-success)]"></span>
-          <span>SYSTEM READY</span>
-        </div>
-      </div>
+
 
       {/* Scrollable Timeline */}
       <div
